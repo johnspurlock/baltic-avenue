@@ -137,12 +137,12 @@ class S3Operation():
         # check auth header present
         client_auth = self.request.headers.get('Authorization')
         if not client_auth:
-            self.error2(400,'NoAuthHeader','Expecting an Authorization header')
+            self.error_generic(400,'NoAuthHeader','Expecting an Authorization header')
             return False
         
         m = re.match('^AWS ([^:]+):([^:]+)$',client_auth)
         if not m:
-            self.error2(400,'InvalidHeader','Authorization header is not in the correct format')
+            self.error_generic(400,'InvalidHeader','Authorization header is not in the correct format')
             return False
         
         
@@ -152,20 +152,10 @@ class S3Operation():
         
         self.requestor = UserPrincipal.gql('WHERE aws_key = :1', client_aws_key).get()
         if not self.requestor:
-            self.response.set_status(403)
-            self.response.headers['Content-Type'] = 'application/xml'
-            self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?><Error>')
-            self.response.out.write( u'<Code>InvalidAccessKeyId</Code>')
-            self.response.out.write( u'<Message>The AWS Access Key Id you provided does not exist in our records.</Message>')
-            self.response.out.write( u'<RequestId>AC5AA2E4B863E975</RequestId>')
-            self.response.out.write( u'<AWSAccessKeyId>%s</AWSAccessKeyId>' % client_aws_key)
-            self.response.out.write( u'<HostId>1Yajca0Zb4GRxLTO0Ezhmh0S0H40qil2fpySjRvc86iWug++zn7g+5/jJJFJTmw0</HostId>')
-            self.response.out.write( u'</Error>')
+            self.error_invalid_access_key(client_aws_key)
             return False
             
      
-    
-
      
         method = self.request.method
         headers = self.request.headers
@@ -180,46 +170,78 @@ class S3Operation():
         logging.debug('client computed: ' + client_auth)
         
         if server_auth != client_auth:
-            self.response.set_status(403)
-            self.response.headers['Content-Type'] = 'application/xml'
-            self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
-            self.response.out.write( u'<Code>SignatureDoesNotMatch</Code>')
-            self.response.out.write( u'<Message>The request signature we calculated does not match the signature you provided. Check your key and signing method.</Message>')
-            self.response.out.write( u'<RequestId>7112FE9E72C69D9D</RequestId>')
-            self.response.out.write( u'<SignatureProvided>%s</SignatureProvided>' % client_aws_secrethash)
-            self.response.out.write( u'<StringToSignBytes>44 45 4c 45 54 45 0a 0a 0a 0a 78 2d 61 6d 7a 2d 64 61 74 65 3a 53 75 6e 2c 20 33 31 20 41 75 67 20 3230 30 38 20 31 38 3a 34 33 3a 30 32 20 47 4d 54 0a 2f 78 78 78 78 61 73 66 61 73 6c 64 6b 66 6a 6c 6b 61 73 66 6a 6c 6b 61 73 6a 64 66 6b 6c 78 2f</StringToSignBytes>')
-            self.response.out.write( u'<AWSAccessKeyId>%s</AWSAccessKeyId>' % self.requestor.aws_key)
-            self.response.out.write( u'<HostId>dEEfIoqdj0kkSkoc81NuK4Q4BoYCZqunIL5y1bJ81zhx3dd0asGvCDZ0NrFMqoMU</HostId>')
-            self.response.out.write( u'<StringToSign>%s</StringToSign>' % server_canonical_string)
-            self.response.out.write( u'</Error>')
+            self.error_invalid_signature(client_aws_secrethash,self.requestor.aws_key,server_canonical_string)
             return False
         
     
-        
         return True
 
 
+    def delete_object_if_exists(self, b, key):
+        existing_oi = ObjectInfo.gql("WHERE ANCESTOR IS :1 and name1 = :2 LIMIT 1",b,key).get()
+        if existing_oi:
+            existing_oc = ObjectContents.gql("WHERE ANCESTOR IS :1 LIMIT 1", existing_oi).get()
+            if existing_oc:
+                existing_oc.delete()
+            existing_oi.acl.delete()
+            existing_oi.delete()
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # error responses
+
+    def error_invalid_signature(self, sig, aws_key, string_to_sign):
+        self.error_generic(403,'SignatureDoesNotMatch','The request signature we calculated does not match the signature you provided. Check your key and signing method.',
+                           {'SignatureProvided':sig,
+                            'StringToSignBytes':'44 45 4c 45 54 45 0a 0a 0a 0a 78 2d 61 6d 7a 2d 64 61 74 65 3a 53 75 6e 2c 20 33 31 20 41 75 67 20 3230 30 38 20 31 38 3a 34 33 3a 30 32 20 47 4d 54 0a 2f 78 78 78 78 61 73 66 61 73 6c 64 6b 66 6a 6c 6b 61 73 66 6a 6c 6b 61 73 6a 64 66 6b 6c 78 2f',
+                            'AWSAccessKeyId':aws_key,
+                            'StringToSign':string_to_sign})
+        
+    def error_invalid_access_key(self, aws_key):
+        self.error_generic(403,'InvalidAccessKeyId','The AWS Access Key Id you provided does not exist in our records.',{'AWSAccessKeyId':aws_key})
+
+    def error_bucket_already_exists(self, bucket):
+        self.error_generic(409,'BucketAlreadyExists','The requested bucket name is not available. The bucket namespace is shared by all users of the system. Please select a different name and try again.',{'BucketName':bucket})
+
+    def error_bucket_not_empty(self, bucket):
+        self.error_generic(409,'BucketNotEmpty','The bucket you tried to delete is not empty',{'BucketName':bucket})
+ 
+    
+    def error_no_such_key(self, key):
+        self.error_generic(404,'NoSuchKey','The specified key does not exist',{'Key':key})
 
     def error_no_such_bucket(self, bucket):
-        self.response.set_status(404)
-        self.response.headers['Content-Type'] = 'application/xml'
-        self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
-        self.response.out.write( u'<Code>NoSuchBucket</Code>')
-        self.response.out.write( u'<Message>The specified bucket does not exist</Message>')
-        self.response.out.write( u'<RequestId>11CF4D91A1DD2B0F</RequestId>')
-        self.response.out.write( u'<BucketName>%s</BucketName>' % bucket)
-        self.response.out.write( u'<HostId>7s0XcbPPISRUBJpdfRIjmXoZNW/YSCtHBhlo6PJrbDndaK3iWMAermCtqcnBBgix</HostId>')
-        self.response.out.write( u'</Error>')
+        self.error_generic(404,'NoSuchBucket','The specified bucket does not exist',{'BucketName':bucket})
 
     def error_access_denied(self):
-        self.response.set_status(403)
+        self.error_generic(403,'AccessDenied','Access Denied')
+        
+    def error_generic(self, status, code, message, fields={}):
+        self.response.set_status(status)
         self.response.headers['Content-Type'] = 'application/xml'
         self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
-        self.response.out.write( u'<Code>AccessDenied</Code>')
-        self.response.out.write( u'<Message>Access Denied</Message>')
-        self.response.out.write( u'<RequestId>FCCB5AC5BA2E4FCC</RequestId>')
-        self.response.out.write( u'<HostId>FJNtoWJ33FRU1GNSAOhuiyGDTvnFDFrY4NKrz0yJna/gTCgksX+8ubCf1afmrdYN</HostId>')
+        self.response.out.write( u'<Code>%s</Code>' % code)
+        self.response.out.write( u'<Message>%s</Message>' % message)
+        self.response.out.write( u'<RequestId>7112FE9E72C69D9D</RequestId>')
+        
+        for field_name in fields:
+            self.response.out.write( u'<%s>%s</%s>' % (field_name,fields[field_name],field_name))
+        
+        self.response.out.write( u'<HostId>dEEfIoqdj0kkSkoc81NuK4Q4BoYCZqunIL5y1bJ81zhx3dd0asGvCDZ0NrFMqoMU</HostId>')
         self.response.out.write( u'</Error>')
         
 

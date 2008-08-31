@@ -6,6 +6,8 @@ import md5
 
 class PutObjectOperation(S3Operation):
     
+
+    
     def go(self, bucket, key):
         logging.info('PUT bucket [%s] key [%s]' % (bucket,key))
         
@@ -27,23 +29,18 @@ class PutObjectOperation(S3Operation):
             self.error_access_denied()
             return
         
+        # delete existing object (if exists)
+        self.delete_object_if_exists(b,key)
         
         
-        existing_oi = ObjectInfo.gql("WHERE ANCESTOR IS :1 and name1 = :2 LIMIT 1",b,key).get()
-        if existing_oi:
-            existing_oc = ObjectContents.gql("WHERE ANCESTOR IS :1 LIMIT 1", existing_oi).get()
-            if existing_oc:
-                existing_oc.delete()
-            existing_oi.delete()
-        
-        
+        # load contents into buffer 
         contents = self.request.body
         
-        
+        # compute hash for etag
         m = md5.new()
         m.update(contents)
 
-        
+        # save object
         acl = ACL(owner=self.requestor)
         acl.put()
         

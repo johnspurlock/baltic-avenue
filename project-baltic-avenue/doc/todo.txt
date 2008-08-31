@@ -1,5 +1,34 @@
 
 
+remaining features
+-------------------
+request time too skewed
+object metadata, content-type
+requestid + amz-id2
+acl
+split bucket/key names
+bucket listing parameters (new subfolder)
+copy
+unicode
+handle underscores
+get acl file 
+string to sign
+bucket access logging?
+location constraints?
+
+
+
+limitations
+---------------------
+no ssl
+1mb max
+no bittorrent
+
+
+
+
+
+
 
 RequestID (x-amz-request-id)
 A597D41D71B06468

@@ -4,12 +4,12 @@ from baltic_common import S3Operation
 from baltic_model import *
 
 
-class DeleteObjectOperation(S3Operation):
+class GetObjectOperation(S3Operation):
     
     
 
     def go(self, bucket, key):
-        logging.info('DELETE bucket [%s] key [%s]' % (bucket,key))
+        logging.info('GET bucket [%s] key [%s]' % (bucket,key))
         
         if not self.check_auth(bucket,key):
             return
@@ -29,8 +29,20 @@ class DeleteObjectOperation(S3Operation):
             return
         
         
-        # delete existing object (if exists)
-        self.delete_object_if_exists(b,key)
+        existing_oi = ObjectInfo.gql("WHERE ANCESTOR IS :1 and name1 = :2 LIMIT 1",b,key).get()
+        if not existing_oi:
+            self.error_no_such_key(key)
+            return
             
-        self.response.set_status(204)
+            
+        existing_oc = ObjectContents.gql("WHERE ANCESTOR IS :1 LIMIT 1", existing_oi).get()
+        
+        
+        self.response.set_status(200)
+        #self.response.headers['Content-Type'] = 'temp'
+        self.response.out.write(existing_oc.contents)
+        
+        
+        
+        
     

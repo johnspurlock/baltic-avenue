@@ -17,6 +17,8 @@ from baltic_bucket_delete import *
 
 from baltic_object_put import *
 from baltic_object_delete import *
+from baltic_object_head import *
+from baltic_object_get import *
 
 from baltic_utils import *
 from baltic_model import *
@@ -91,7 +93,11 @@ class MainPage(webapp.RequestHandler):
             GetBucketOperation(self.request,self.response).go(m[0],m[2]) 
             return
 
-
+        # GET object
+        m = parse_url_path(self.request.path,self.request.query_string)
+        if m[0] and m[1]:
+            GetObjectOperation(self.request,self.response).go(m[0],m[1]) 
+            return
 
 
         # unsupported
@@ -160,6 +166,12 @@ class MainPage(webapp.RequestHandler):
         m = parse_url_path(self.request.path,self.request.query_string)
         if m[0] and not m[1]:
             HeadBucketOperation(self.request,self.response).go(m[0]) 
+            return
+        
+        # HEAD object
+        m = parse_url_path(self.request.path,self.request.query_string)
+        if m[0] and m[1]:
+            HeadObjectOperation(self.request,self.response).go(m[0],m[1]) 
             return
     
 

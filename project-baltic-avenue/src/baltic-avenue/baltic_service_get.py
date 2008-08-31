@@ -17,15 +17,6 @@ class GetServiceOperation(S3Operation):
     
         self.response.headers['Content-Type'] = 'application/xml'
         
-        
-        #owner = Principal(id=private_info.id,display_name=private_info.display_name)
-        
-        #buckets = [
-        #           Bucket(name='asdf2',creation_date=datetime(2007, 1, 15,19, 40, 34, 0, utc))
-        #           ,Bucket(name='asdf3',creation_date=datetime(2007, 1, 15,19, 40, 34, 0, utc))
-        #           ]
-        
-        
         buckets = [b for b in Bucket.all() if b.owner.id == self.requestor.id]
         
         self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">')
