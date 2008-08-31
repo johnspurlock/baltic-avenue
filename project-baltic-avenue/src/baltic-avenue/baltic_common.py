@@ -1,19 +1,16 @@
 from datetime import tzinfo, timedelta, datetime
-import logging
-
-from google.appengine.ext import db
+from baltic_model import *
 
 import base64
 import urllib
 import hmac
 import sha
+import logging
+import re
 
-
-import privateinfo
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
-
 
 
 
@@ -33,15 +30,6 @@ class UTC(tzinfo):
 
 utc = UTC()
 
-class Bucket(db.Model):
-    name = db.StringProperty(required=True)
-    creation_date = db.DateTimeProperty(required=True)
-
-class Principal(db.Model):
-    id = db.StringProperty(required=True)
-    display_name = db.StringProperty(required=True)
-
-
 
 
 
@@ -51,25 +39,8 @@ class S3Operation():
     def __init__(self, request, response):
         self.request = request
         self.response = response
+        self.requestor = None
 
-
-    def error2(self, status_int, code, message):
-    
-    
-        self.response.set_status(status_int)
-       
-       
-        self.response.headers['Content-Type'] = 'application/xml'
-        
-        
-        self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>')
-        self.response.out.write( u'<Error>')
-        self.response.out.write( u'  <Code>%s</Code>' % code)
-        self.response.out.write( u'  <Message>%s</Message>' % message)
-        #self.response.out.write( u'  <Resource>/mybucket/myfoto.jpg</Resource>' % message)
-        self.response.out.write( u'  <RequestId>4442587FB7D0A2F9</RequestId>')
-        self.response.out.write( u'</Error>')
-    
 
         
     # generates the aws canonical string for the given parameters
@@ -155,54 +126,96 @@ class S3Operation():
         else:
             return b64_hmac
 
-
-
-    def get_private_info(self):
-        private_yaml_file = open("private.yaml", "rb")
-        
-        return privateinfo.LoadSinglePrivateInfo(private_yaml_file)
-
+    
 
     def check_auth(self, bucket='', key='', query_args = {}):
         
         # check auth header present
-        auth = self.request.headers.get('Authorization')
-        if not auth:
+        client_auth = self.request.headers.get('Authorization')
+        if not client_auth:
             self.error2(400,'NoAuthHeader','Expecting an Authorization header')
             return False
         
+        m = re.match('^AWS ([^:]+):([^:]+)$',client_auth)
+        if not m:
+            self.error2(400,'InvalidHeader','Authorization header is not in the correct format')
+            return False
         
         
-        # check auth header valid
-        private_info = self.get_private_info()
+        client_aws_key = m.group(1)
+        client_aws_secrethash = m.group(2)
         
-        aws_key = private_info.aws_key
-        aws_secret = private_info.aws_secret
         
+        self.requestor = UserPrincipal.gql('WHERE aws_key = :1', client_aws_key).get()
+        if not self.requestor:
+            self.response.set_status(403)
+            self.response.headers['Content-Type'] = 'application/xml'
+            self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?><Error>')
+            self.response.out.write( u'<Code>InvalidAccessKeyId</Code>')
+            self.response.out.write( u'<Message>The AWS Access Key Id you provided does not exist in our records.</Message>')
+            self.response.out.write( u'<RequestId>AC5AA2E4B863E975</RequestId>')
+            self.response.out.write( u'<AWSAccessKeyId>%s</AWSAccessKeyId>' % client_aws_key)
+            self.response.out.write( u'<HostId>1Yajca0Zb4GRxLTO0Ezhmh0S0H40qil2fpySjRvc86iWug++zn7g+5/jJJFJTmw0</HostId>')
+            self.response.out.write( u'</Error>')
+            return False
+            
      
-     
+    
+
      
         method = self.request.method
-        
- 
         headers = self.request.headers
         
         server_canonical_string = self.canonical_string(method=method, headers=headers, bucket=bucket, key=key, query_args = query_args)
         
-        server_auth = "AWS %s:%s" % (aws_key, self.encode(aws_secret, server_canonical_string))
+        server_auth = "AWS %s:%s" % (self.requestor.aws_key, self.encode(self.requestor.aws_secret, server_canonical_string))
         
-        client_auth = self.request.headers['Authorization']
         
         logging.debug('server canonical: ' + server_canonical_string)
         logging.debug('server computed: ' + server_auth)
         logging.debug('client computed: ' + client_auth)
         
         if server_auth != client_auth:
-            self.error2(400, 'InvalidAuthHeader', 'Authorization header does not match')
+            self.response.set_status(403)
+            self.response.headers['Content-Type'] = 'application/xml'
+            self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
+            self.response.out.write( u'<Code>SignatureDoesNotMatch</Code>')
+            self.response.out.write( u'<Message>The request signature we calculated does not match the signature you provided. Check your key and signing method.</Message>')
+            self.response.out.write( u'<RequestId>7112FE9E72C69D9D</RequestId>')
+            self.response.out.write( u'<SignatureProvided>%s</SignatureProvided>' % client_aws_secrethash)
+            self.response.out.write( u'<StringToSignBytes>44 45 4c 45 54 45 0a 0a 0a 0a 78 2d 61 6d 7a 2d 64 61 74 65 3a 53 75 6e 2c 20 33 31 20 41 75 67 20 3230 30 38 20 31 38 3a 34 33 3a 30 32 20 47 4d 54 0a 2f 78 78 78 78 61 73 66 61 73 6c 64 6b 66 6a 6c 6b 61 73 66 6a 6c 6b 61 73 6a 64 66 6b 6c 78 2f</StringToSignBytes>')
+            self.response.out.write( u'<AWSAccessKeyId>%s</AWSAccessKeyId>' % self.requestor.aws_key)
+            self.response.out.write( u'<HostId>dEEfIoqdj0kkSkoc81NuK4Q4BoYCZqunIL5y1bJ81zhx3dd0asGvCDZ0NrFMqoMU</HostId>')
+            self.response.out.write( u'<StringToSign>%s</StringToSign>' % server_canonical_string)
+            self.response.out.write( u'</Error>')
             return False
+        
+    
         
         return True
 
 
 
+
+    def error_no_such_bucket(self, bucket):
+        self.response.set_status(404)
+        self.response.headers['Content-Type'] = 'application/xml'
+        self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
+        self.response.out.write( u'<Code>NoSuchBucket</Code>')
+        self.response.out.write( u'<Message>The specified bucket does not exist</Message>')
+        self.response.out.write( u'<RequestId>11CF4D91A1DD2B0F</RequestId>')
+        self.response.out.write( u'<BucketName>%s</BucketName>' % bucket)
+        self.response.out.write( u'<HostId>7s0XcbPPISRUBJpdfRIjmXoZNW/YSCtHBhlo6PJrbDndaK3iWMAermCtqcnBBgix</HostId>')
+        self.response.out.write( u'</Error>')
+
+    def error_access_denied(self):
+        self.response.set_status(403)
+        self.response.headers['Content-Type'] = 'application/xml'
+        self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
+        self.response.out.write( u'<Code>AccessDenied</Code>')
+        self.response.out.write( u'<Message>Access Denied</Message>')
+        self.response.out.write( u'<RequestId>FCCB5AC5BA2E4FCC</RequestId>')
+        self.response.out.write( u'<HostId>FJNtoWJ33FRU1GNSAOhuiyGDTvnFDFrY4NKrz0yJna/gTCgksX+8ubCf1afmrdYN</HostId>')
+        self.response.out.write( u'</Error>')
+        
 

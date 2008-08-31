@@ -1,6 +1,7 @@
 from datetime import tzinfo, timedelta, datetime
 import logging
-from baltic_common import S3Operation, Principal, Bucket
+from baltic_common import S3Operation
+from baltic_model import *
 
 
 class GetServiceOperation(S3Operation):
@@ -16,8 +17,8 @@ class GetServiceOperation(S3Operation):
     
         self.response.headers['Content-Type'] = 'application/xml'
         
-        private_info = self.get_private_info()
-        owner = Principal(id=private_info.owner_id,display_name=private_info.owner_display_name)
+        
+        #owner = Principal(id=private_info.id,display_name=private_info.display_name)
         
         #buckets = [
         #           Bucket(name='asdf2',creation_date=datetime(2007, 1, 15,19, 40, 34, 0, utc))
@@ -25,16 +26,16 @@ class GetServiceOperation(S3Operation):
         #           ]
         
         
-        buckets = Bucket.all()
+        buckets = [b for b in Bucket.all() if b.owner.id == self.requestor.id]
         
         self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">')
         
     
-        self.response.out.write( u'<Owner><ID>%s</ID><DisplayName>%s</DisplayName></Owner>' % (owner.id, owner.display_name))
+        self.response.out.write( u'<Owner><ID>%s</ID><DisplayName>%s</DisplayName></Owner>' % (self.requestor.id, self.requestor.display_name))
         self.response.out.write( u'<Buckets>')
         
         for b in buckets:
-            self.response.out.write( u'<Bucket><Name>%s</Name><CreationDate>%s</CreationDate></Bucket>' % (b.name ,b.creation_date.strftime("%Y-%m-%dT%H:%M:%S.000Z") ))
+            self.response.out.write( u'<Bucket><Name>%s</Name><CreationDate>%s</CreationDate></Bucket>' % (b.name1 ,b.creation_date.strftime("%Y-%m-%dT%H:%M:%S.000Z") ))
         
         
         self.response.out.write( u'</Buckets></ListAllMyBucketsResult>')

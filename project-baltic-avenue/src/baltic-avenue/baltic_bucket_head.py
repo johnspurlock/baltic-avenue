@@ -1,7 +1,7 @@
 from datetime import tzinfo, timedelta, datetime
 import logging
 from baltic_common import S3Operation
-from google.appengine.ext import db
+from baltic_model import *
 
 class HeadBucketOperation(S3Operation):
 
@@ -13,11 +13,12 @@ class HeadBucketOperation(S3Operation):
     
         
         # 200 if you own it, 403 if someone else owns it, else 404
-        q = db.GqlQuery("SELECT * FROM Bucket WHERE name = :1 ",  bucket)
-        if (q.count() == 1):
+        q = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        if q and q.owner.id == self.requestor.id:
             self.response.set_status(200)
-            return;
-        
-        self.response.set_status(404)
+        elif q:
+            self.response.set_status(403)
+        else:
+            self.response.set_status(404)
         
     
