@@ -1,6 +1,14 @@
 import re
 
+from xml.sax import saxutils
 
+
+def http_date(value):
+    return value.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+def escape_xml(value):
+    return saxutils.quoteattr("'" + value)[2:-1]
+    
 def parse_url_path(url_path, query_string=None):
     """ returns bucket, key, query string """
 

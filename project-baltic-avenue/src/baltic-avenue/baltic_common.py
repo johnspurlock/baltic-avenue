@@ -44,7 +44,7 @@ class S3Operation():
 
         
     # generates the aws canonical string for the given parameters
-    def canonical_string(self, method, bucket="", key="", query_args={}, headers={}, expires=None):
+    def canonical_string(self, method, bucket="", key=None, query_args={}, headers={}, expires=None):
         
         
         AMAZON_HEADER_PREFIX = 'x-amz-'
@@ -96,8 +96,7 @@ class S3Operation():
             buf += "%s" % bucket
 
 
-        # add the key.  even if it doesn't exist, add the slash
-        #buf += "/%s" % urllib.quote_plus(key)
+
     
         # handle special query string arguments
     
@@ -110,6 +109,11 @@ class S3Operation():
             buf += "?logging"
         elif query_args.has_key("location"):
             buf += "?location"
+    
+        # add the key.  even if it doesn't exist, add the slash
+        if key:
+            buf += '/' + urllib.quote_plus(key)
+    
     
         return buf
 
@@ -128,7 +132,7 @@ class S3Operation():
 
     
 
-    def check_auth(self, bucket='', key='', query_args = {}):
+    def check_auth(self, bucket='', key=None, query_args = {}):
         
         # check auth header present
         client_auth = self.request.headers.get('Authorization')

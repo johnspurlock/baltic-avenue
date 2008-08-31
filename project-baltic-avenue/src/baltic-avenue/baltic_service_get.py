@@ -2,7 +2,7 @@ from datetime import tzinfo, timedelta, datetime
 import logging
 from baltic_common import S3Operation
 from baltic_model import *
-
+from baltic_utils import *
 
 class GetServiceOperation(S3Operation):
 
@@ -35,7 +35,7 @@ class GetServiceOperation(S3Operation):
         self.response.out.write( u'<Buckets>')
         
         for b in buckets:
-            self.response.out.write( u'<Bucket><Name>%s</Name><CreationDate>%s</CreationDate></Bucket>' % (b.name1 ,b.creation_date.strftime("%Y-%m-%dT%H:%M:%S.000Z") ))
+            self.response.out.write( u'<Bucket><Name>%s</Name><CreationDate>%s</CreationDate></Bucket>' % (b.name1 ,http_date(b.creation_date) ))
         
         
         self.response.out.write( u'</Buckets></ListAllMyBucketsResult>')

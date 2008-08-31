@@ -3,6 +3,9 @@ import unittest
 
 from baltic_utils import *
 
+
+
+
 class AllTests( unittest.TestCase ):
    """ Class to test validation functions """
    
@@ -14,6 +17,10 @@ class AllTests( unittest.TestCase ):
       self.assert_( parse_url_path('/asdf','location') == ('asdf',None,'location'))
     
 
+   def test_quote_xml(self):
+       
+       #print escape_xml('"cef7ccd89dacf1ced6f5ec91d759953f"')
+       self.assert_(escape_xml('\"cef7ccd89dacf1ced6f5ec91d759953f\"') == "&quot;cef7ccd89dacf1ced6f5ec91d759953f&quot;")
 
 
 def TestSuite():

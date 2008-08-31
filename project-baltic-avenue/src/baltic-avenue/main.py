@@ -15,6 +15,9 @@ from baltic_bucket_head import *
 from baltic_bucket_put import *
 from baltic_bucket_delete import *
 
+from baltic_object_put import *
+from baltic_object_delete import *
+
 from baltic_utils import *
 from baltic_model import *
 
@@ -111,6 +114,13 @@ class MainPage(webapp.RequestHandler):
             PutBucketOperation(self.request,self.response).go(m[0]) 
             return
             
+        # PUT object
+        m = parse_url_path(self.request.path,self.request.query_string)
+        if m[0] and m[1]:
+            PutObjectOperation(self.request,self.response).go(m[0],m[1]) 
+            return
+ 
+            
         # unsupported
         self.response.set_status(500)
         self.response.headers['Content-Type'] = 'text/plain'
@@ -127,6 +137,12 @@ class MainPage(webapp.RequestHandler):
         m = parse_url_path(self.request.path,self.request.query_string)
         if m[0] and not m[1]:
             DeleteBucketOperation(self.request,self.response).go(m[0]) 
+            return
+        
+        # DELETE object
+        m = parse_url_path(self.request.path,self.request.query_string)
+        if m[0] and m[1]:
+            DeleteObjectOperation(self.request,self.response).go(m[0],m[1]) 
             return
             
         # unsupported
