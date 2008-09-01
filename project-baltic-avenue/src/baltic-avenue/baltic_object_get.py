@@ -33,7 +33,7 @@ class GetObjectOperation(S3Operation):
             return
         
         
-        existing_oi = ObjectInfo.gql("WHERE ANCESTOR IS :1 and name1 = :2 LIMIT 1",b,key).get()
+        existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()
         if not existing_oi:
             self.error_no_such_key(key)
             return

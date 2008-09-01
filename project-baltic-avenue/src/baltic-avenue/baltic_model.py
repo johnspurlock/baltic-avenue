@@ -5,7 +5,6 @@ class Principal(db.Model):
     id = db.StringProperty(required=True)
     display_name = db.StringProperty(required=True)
 
-
 class UserPrincipal(Principal):
     aws_key = db.StringProperty(required=True)
     aws_secret = db.StringProperty(required=True)
@@ -25,7 +24,6 @@ class ACLGrant(db.Model):
 class Bucket(db.Model):
     owner = db.ReferenceProperty(Principal,required=True)
     name1 = db.StringProperty(required=True)
-    name2 = db.StringProperty()
     creation_date = db.DateTimeProperty(required=True)
     acl = db.ReferenceProperty(ACL,required=True)
     
@@ -33,13 +31,12 @@ class ObjectInfo(db.Expando):
     bucket = db.ReferenceProperty(Bucket,required=True)  #parent
     name1 = db.StringProperty(required=True)
     name2 = db.StringProperty()
-    # more names?
+    name3 = db.StringProperty()    # keys can be at max 1024 bytes utf-8 encoded
     last_modified = db.DateTimeProperty(required=True)
     etag = db.StringProperty(required=True)
     size = db.IntegerProperty(required=True)  #aka content-length
     owner = db.ReferenceProperty(Principal,required=True)
     acl = db.ReferenceProperty(ACL,required=True)
-
 
 class ObjectContents(db.Model):
     object_info = db.ReferenceProperty(ObjectInfo,required=True) #parent

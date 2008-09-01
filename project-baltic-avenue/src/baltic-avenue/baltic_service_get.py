@@ -26,7 +26,7 @@ class GetServiceOperation(S3Operation):
         self.response.out.write( u'<Buckets>')
         
         for b in buckets:
-            self.response.out.write( u'<Bucket><Name>%s</Name><CreationDate>%s</CreationDate></Bucket>' % (b.name1 ,http_date(b.creation_date) ))
+            self.response.out.write( u'<Bucket><Name>%s</Name><CreationDate>%s</CreationDate></Bucket>' % (b.name1 ,date_format_1(b.creation_date) ))
         
         
         self.response.out.write( u'</Buckets></ListAllMyBucketsResult>')

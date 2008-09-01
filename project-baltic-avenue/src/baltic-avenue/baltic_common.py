@@ -8,7 +8,7 @@ import hmac
 import sha
 import logging
 import re
-
+import random
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
@@ -42,6 +42,11 @@ class S3Operation():
         self.response = response
         self.requestor = None
 
+        self.request_id = '%16X' % random.getrandbits(4 * 16)
+        self.host_id = '%64x' % random.getrandbits(4 * 64)
+        
+        self.response.headers['x-amz-request-id'] = self.request_id
+        self.response.headers['x-amz-id-2'] = self.host_id
 
         
     # generates the aws canonical string for the given parameters
@@ -180,8 +185,14 @@ class S3Operation():
         return True
 
 
+    def add_key_query_filters(self, q, key):
+        q.filter('name1 =', key[0:500])
+        q.filter('name2 =', key[500:1000])
+        q.filter('name3 =', key[1000:1500])
+        return q
+
     def delete_object_if_exists(self, b, key):
-        existing_oi = ObjectInfo.gql("WHERE ANCESTOR IS :1 and name1 = :2 LIMIT 1",b,key).get()
+        existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()
         if existing_oi:
             existing_oc = ObjectContents.gql("WHERE ANCESTOR IS :1 LIMIT 1", existing_oi).get()
             if existing_oc:
@@ -192,7 +203,7 @@ class S3Operation():
     def object_metadata_as_response_headers(self, object_info):
         self.response.headers['Content-Length'] = str(object_info.size)  # this doesn't seem to work for head requests
         self.response.headers['ETag'] = str(object_info.etag)
-        self.response.headers['Last-Modified'] = 'Sat, 03 May 2008 20:39:11 GMT'
+        self.response.headers['Last-Modified'] = date_format_2(object_info.last_modified)
         for h in object_info.dynamic_properties():
             if h.lower().startswith('x-amz-meta-') or h.lower() in ['content-type','cache-control','content-disposition','expires','content-encoding']:
                 value = getattr(object_info,h)
@@ -244,18 +255,21 @@ class S3Operation():
     def error_access_denied(self):
         self.error_generic(403,'AccessDenied','Access Denied')
         
+    def error_key_too_long(self,max_size,size):
+        self.error_generic(400,'KeyTooLongError','Your key is too long',{'MaxSizeAllowed':max_size,'Size':size})
+        
     def error_generic(self, status, code, message, fields={}):
         self.response.set_status(status)
         self.response.headers['Content-Type'] = 'application/xml'
         self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
         self.response.out.write( u'<Code>%s</Code>' % code)
         self.response.out.write( u'<Message>%s</Message>' % message)
-        self.response.out.write( u'<RequestId>7112FE9E72C69D9D</RequestId>')
+        self.response.out.write( u'<RequestId>%s</RequestId>' % self.request_id)
         
         for field_name in fields:
             self.response.out.write( u'<%s>%s</%s>' % (field_name,fields[field_name],field_name))
         
-        self.response.out.write( u'<HostId>dEEfIoqdj0kkSkoc81NuK4Q4BoYCZqunIL5y1bJ81zhx3dd0asGvCDZ0NrFMqoMU</HostId>')
+        self.response.out.write( u'<HostId>%s</HostId>' % self.host_id)
         self.response.out.write( u'</Error>')
         
 

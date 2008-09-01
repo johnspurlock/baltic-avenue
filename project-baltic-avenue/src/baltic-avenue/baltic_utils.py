@@ -3,8 +3,11 @@ import re
 from xml.sax import saxutils
 
 
-def http_date(value):
+def date_format_1(value):
     return value.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+def date_format_2(value):
+    return value.strftime('%a, %d %b %Y %H:%M:%S GMT')
 
 def escape_xml(value):
     return saxutils.quoteattr("'" + value)[2:-1]

@@ -30,6 +30,15 @@ class PutObjectOperation(S3Operation):
             self.error_access_denied()
             return
         
+        
+        # make sure the key is not too long
+        max_size = 1024
+        size = len(key)
+        if size > max_size:
+            self.error_key_too_long(max_size,size)
+            return
+        
+        
         # delete existing object (if exists)
         self.delete_object_if_exists(b,key)
         
@@ -48,7 +57,9 @@ class PutObjectOperation(S3Operation):
         oi = ObjectInfo(
             parent=b,
             bucket=b,
-            name1=key,
+            name1=key[0:500],
+            name2=key[500:1000],
+            name3=key[1000:1500],
             last_modified=datetime.utcnow().replace(tzinfo=utc),
             etag = '"%s"' % m.hexdigest(),
             size=len(contents),

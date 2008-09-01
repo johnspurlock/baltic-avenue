@@ -64,7 +64,20 @@ class MainPage(webapp.RequestHandler):
                 p.put()
         
         
+    def temp(self):
+        #self.update_principals()
+        b = Bucket.gql("WHERE name1 = :1 ",  'bk2').get()
         
+        key = 'x' * 512
+        
+        q = ObjectInfo.all().ancestor(b)
+        
+        q = q.filter('name1 =', key[0:500])
+        q.filter('name2 =', key[500:1000])
+        q.filter('name3 =', key[1000:1500])
+        
+        oi = q.get()
+        logging.info(oi)
 
     def get(self):
         
@@ -77,8 +90,7 @@ class MainPage(webapp.RequestHandler):
     
         # TEMP
         if self.request.path == '/test':
-            self.update_principals()
-            
+            self.temp()
             return
         
         # GET service

@@ -2,12 +2,11 @@
 
 remaining features
 -------------------
+content-md5 on puts
 query string auth
 run the principal import once on startup (how?)
 request time too skewed
-requestid + amz-id2
 acl
-split bucket/key names
 bucket listing parameters (new subfolder)
 copy
 unicode
@@ -28,25 +27,6 @@ no vhost-style requests  	http://code.google.com/p/googleappengine/issues/detail
 
 
 
-
-
-
-RequestID (x-amz-request-id)
-A597D41D71B06468
-0F8E8AAEEB39E3EE
-
-AMZ-ID2 (x-amz-id-2)
-zsM0xBRBR06SzKDMyjluqFy28k/Gx34GfxGzDo5JXaGdbzJ1w8zPoRS4yXkPNrlI
-
-x-amz-id-2:
-x-amz-request-id:
-x-amz-meta-content-type:text/plain
-Content-Length:16456
-Content-Type:binary/octet-stream
-Date:Sun, 31 Aug 2008 15:10:06 GMT
-ETag:"f0dd8493ded5cfce7741922ef2c189d5"
-Last-Modified:Sat, 15 Dec 2007 19:21:18 GMT
-Server:AmazonS3
 
 
 

@@ -78,8 +78,8 @@ class GetBucketOperation(S3Operation):
         
         for oi in ObjectInfo.gql("WHERE ANCESTOR IS :1",b):
             self.response.out.write(u'<Contents>')
-            self.response.out.write(u'<Key>%s</Key>' % oi.name1)
-            self.response.out.write(u'<LastModified>%s</LastModified>' % http_date(oi.last_modified))
+            self.response.out.write(u'<Key>%s</Key>' % (oi.name1 + oi.name2 + oi.name3))
+            self.response.out.write(u'<LastModified>%s</LastModified>' % date_format_1(oi.last_modified))
             self.response.out.write(u'<ETag>%s</ETag>' % escape_xml(oi.etag))
             self.response.out.write(u'<Size>%s</Size>' % oi.size)
             self.response.out.write(u'<Owner>')
