@@ -38,6 +38,9 @@ class ObjectInfo(db.Expando):
     owner = db.ReferenceProperty(Principal,required=True)
     acl = db.ReferenceProperty(ACL,required=True)
 
+    def full_name(self):
+        return self.name1 +  self.name2 +  self.name3
+
 class ObjectContents(db.Model):
     object_info = db.ReferenceProperty(ObjectInfo,required=True) #parent
     contents = db.BlobProperty()  # not required to support zero-byte files

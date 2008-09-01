@@ -2,7 +2,7 @@ from datetime import tzinfo, timedelta, datetime
 import logging
 from baltic_common import S3Operation
 from baltic_model import *
-
+from baltic_utils import *
 
 class DeleteObjectOperation(S3Operation):
     
@@ -28,6 +28,9 @@ class DeleteObjectOperation(S3Operation):
             self.error_access_denied()
             return
         
+        
+        # unencode the key
+        key = url_encode(key)
         
         # delete existing object (if exists)
         self.delete_object_if_exists(b,key)

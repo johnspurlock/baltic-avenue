@@ -2,13 +2,13 @@ from datetime import tzinfo, timedelta, datetime
 import logging
 from baltic_common import S3Operation
 from baltic_model import *
-
+from baltic_utils import *
 
 class GetObjectOperation(S3Operation):
     
     
 
-    def go(self, bucket, key, query_string):
+    def go(self, bucket, key):
         logging.info('GET bucket [%s] key [%s] query-params [%s]' % (bucket,key,self.request.params))
         
        
@@ -29,6 +29,10 @@ class GetObjectOperation(S3Operation):
         if b.owner.id != self.requestor.id:
             self.error_access_denied()
             return
+        
+        
+        # unencode the key
+        key = url_encode(key)
         
         
         existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()

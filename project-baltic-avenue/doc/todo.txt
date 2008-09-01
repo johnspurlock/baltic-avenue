@@ -2,7 +2,6 @@
 
 remaining features
 -------------------
-bucket listing parameters (delimiter)
 acl/get acl file 
 content-md5 on puts
 query string auth

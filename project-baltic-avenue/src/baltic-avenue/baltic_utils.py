@@ -24,9 +24,12 @@ def parse_url_path(url_path):
     
     m = re.match('^/([^/]+)/(.+)$',url_path)
     if m:
-        return (m.group(1),m.group(2))
+        return (m.group(1),m.group(2).replace('%25','%'))
     
     return (None,None)
-           
+
+def url_encode(value):
+    return value.replace('%2f','/')
+
     
     

@@ -105,7 +105,7 @@ class S3Operation():
 
         # add the key.  even if it doesn't exist, add the slash
         if key:
-            buf += '/' + urllib.quote_plus(key)
+            buf += '/' + key #urllib.quote_plus(key)
             
         # handle special query string arguments
     

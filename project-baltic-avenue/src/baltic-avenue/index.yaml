@@ -10,15 +10,15 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-# Used 201 times in query history.
+# Used 256 times in query history.
 - kind: ObjectContents
   ancestor: yes
 
-# Used 246 times in query history.
+# Used 257 times in query history.
 - kind: ObjectInfo
   ancestor: yes
 
-# Used 23 times in query history.
+# Used 128 times in query history.
 - kind: ObjectInfo
   ancestor: yes
   properties:

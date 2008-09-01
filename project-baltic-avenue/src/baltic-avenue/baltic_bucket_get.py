@@ -64,7 +64,7 @@ class GetBucketOperation(S3Operation):
 
         
        
-        # bucket listing
+        # validate and clean args
         
         # validate max-keys
         client_max_keys = self.request.params.get('max-keys')
@@ -76,16 +76,23 @@ class GetBucketOperation(S3Operation):
             if client_max_keys < 0 or client_max_keys > 2147483647:
                 self.error_invalid_argument_integer_range('maxKeys',client_max_keys)
                 return
+        max_keys = min(client_max_keys or 1001,1000)
         
-            
-            
-        max_keys = min(client_max_keys,1000)
-        delimiter = ''
-        prefix = self.request.params.get('prefix') or ''
-        marker = ''
+        
+        # validate and unencode delimiter
+        delimiter = url_encode(self.request.params.get('delimiter') or '')
+        
+        # validate and unencode prefix
+        prefix = url_encode(self.request.params.get('prefix') or '')
+        
+        # validate and unencode marker
+        marker = url_encode(self.request.params.get('marker') or '')
+        
         is_truncated = False
+        next_marker = None
         
-        items = []
+        ois = []
+        cps = []
         if max_keys > 0:
             # return ordered by key name
             q = ObjectInfo.all().ancestor(b).order('name1').order('name2').order('name3') 
@@ -93,41 +100,73 @@ class GetBucketOperation(S3Operation):
             # filter as much as possible on the backend
             # appengine only allows one neq filter, so we'll filter on name1
             if len(prefix) > 0:
-                q = q.filter('name1 >=',prefix).filter('name1 <',prefix + u'\xEF\xBF\xBD')
+                q = q.filter('name1 >=',prefix).filter('name1 <',prefix + u'\xEF\xBF\xBD')  # "starts-with" trick from http://code.google.com/appengine/docs/datastore/queriesandindexes.html
             
             # now fetch and post-process
             for oi in q:    # using query as an iterable should lazy load in chunks, not buffer all objects...
                 
-                if len(prefix) == 0 or oi.name1.startswith(prefix):
-                    if len(items) == max_keys:
-                        is_truncated = True
-                        break
-                    items.append(oi)
+                # only return items that start with the prefix (if provided)
+                if len(prefix) == 0 or oi.full_name().startswith(prefix):  
+                    
+                    # only return items that are after the marker (if provided)
+                    if len(marker)==0 or oi.full_name() > marker:
+                        
+                        # compute common-prefix if delimiter supplied
+                        cp = None
+                        if len(delimiter) > 0:
+                            after_prefix = oi.full_name()[len(prefix):]
+                            next_delim_index = after_prefix.find(delimiter)
+                            if next_delim_index >-1:
+                                cp = prefix + after_prefix[0:next_delim_index+len(delimiter)]
+                                if cp in cps:
+                                    # this is not a new cp, keep going
+                                    continue
+                        
+                        # if we get to this point, we are about to add a cp or an oi
+                        if len(ois)+len(cps) == max_keys:
+                            is_truncated = True
+                            if len(delimiter) > 0:
+                                next_marker = max(ois[-1],cps[-1])
+                            break
+                        
+                        # add the new oi or cp to the result list
+                        if cp:
+                            cps.append(cp)
+                        else:
+                            ois.append(oi)
+
+
 
 
         
-        
+        # write out the response
         self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">')
         self.response.out.write(u'<Name>%s</Name>' % bucket)
         self.response.out.write(u'<Prefix>%s</Prefix>' % prefix)
         self.response.out.write(u'<Marker>%s</Marker>' % marker)
+        if next_marker:
+            self.response.out.write(u'<NextMarker>%s</NextMarker>' % next_marker)
         self.response.out.write(u'<MaxKeys>%s</MaxKeys>' % max_keys)
         self.response.out.write(u'<Delimiter>%s</Delimiter>' % delimiter)
         self.response.out.write(u'<IsTruncated>%s</IsTruncated>' % is_truncated)
     
-
-        for oi in items:
+        for oi in ois:
             self.response.out.write(u'<Contents>')
-            self.response.out.write(u'<Key>%s</Key>' % (oi.name1 + oi.name2 + oi.name3))
+            self.response.out.write(u'<Key>%s</Key>' % oi.full_name())
             self.response.out.write(u'<LastModified>%s</LastModified>' % date_format_1(oi.last_modified))
             self.response.out.write(u'<ETag>%s</ETag>' % escape_xml(oi.etag))
             self.response.out.write(u'<Size>%s</Size>' % oi.size)
             self.response.out.write(u'<Owner>')
             self.response.out.write(u'<ID>%s</ID>' % oi.owner.id)
             self.response.out.write(u'<DisplayName>%s</DisplayName>'% oi.owner.display_name)
-            self.response.out.write(u'</Owner><StorageClass>STANDARD</StorageClass></Contents>')
+            self.response.out.write(u'</Owner><StorageClass>STANDARD</StorageClass>')
+            self.response.out.write(u'</Contents>')
 
-          
+        if len(cps) > 0:
+            self.response.out.write(u'<CommonPrefixes>')
+            for cp in cps:
+                self.response.out.write(u'<Prefix>%s</Prefix>' % cp)
+            self.response.out.write(u'</CommonPrefixes>')
 
         self.response.out.write(u'</ListBucketResult>')
         

@@ -2,6 +2,7 @@ from datetime import tzinfo, timedelta, datetime
 import logging
 from baltic_common import S3Operation, utc
 from baltic_model import *
+from baltic_utils import *
 import md5
 
 
@@ -30,6 +31,10 @@ class PutObjectOperation(S3Operation):
             self.error_access_denied()
             return
         
+        
+        
+        # unencode the key
+        key = url_encode(key)
         
         # make sure the key is not too long
         max_size = 1024

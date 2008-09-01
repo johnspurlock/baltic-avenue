@@ -33,6 +33,8 @@ class HeadObjectOperation(S3Operation):
             self.response.set_status(403)
             return
         
+        # unencode the key
+        key = url_encode(key)
         
         existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()
         if not existing_oi:
