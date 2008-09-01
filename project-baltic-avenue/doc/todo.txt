@@ -2,16 +2,15 @@
 
 remaining features
 -------------------
+bucket listing parameters (delimiter)
+acl/get acl file 
 content-md5 on puts
 query string auth
 run the principal import once on startup (how?)
 request time too skewed
-acl
-bucket listing parameters (new subfolder)
 copy
 unicode
 handle underscores (and other difficult chars)
-get acl file 
 bucket access logging?
 location constraints?
 

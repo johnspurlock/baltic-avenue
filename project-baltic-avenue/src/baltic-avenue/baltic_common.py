@@ -257,7 +257,17 @@ class S3Operation():
         
     def error_key_too_long(self,max_size,size):
         self.error_generic(400,'KeyTooLongError','Your key is too long',{'MaxSizeAllowed':max_size,'Size':size})
+
+    def error_invalid_argument_integer_range(self, arg_name, arg_value):
+        self.error_invalid_argument(arg_name, arg_value, 'Argument %s must be an integer between 0 and 2147483647' % arg_name)
         
+    def error_invalid_argument_not_integer(self, arg_name, arg_value):
+        self.error_invalid_argument(arg_name, arg_value, 'Provided %s not an integer or within integer range' % arg_name)
+  
+    def error_invalid_argument(self, arg_name, arg_value, message):
+        self.error_generic(400,'InvalidArgument',message,{'ArgumentName':arg_name, 'ArgumentValue':arg_value})
+
+
     def error_generic(self, status, code, message, fields={}):
         self.response.set_status(status)
         self.response.headers['Content-Type'] = 'application/xml'
@@ -267,7 +277,7 @@ class S3Operation():
         self.response.out.write( u'<RequestId>%s</RequestId>' % self.request_id)
         
         for field_name in fields:
-            self.response.out.write( u'<%s>%s</%s>' % (field_name,fields[field_name],field_name))
+            self.response.out.write( u'<%s>%s</%s>' % (field_name,str(fields[field_name]),field_name))
         
         self.response.out.write( u'<HostId>%s</HostId>' % self.host_id)
         self.response.out.write( u'</Error>')

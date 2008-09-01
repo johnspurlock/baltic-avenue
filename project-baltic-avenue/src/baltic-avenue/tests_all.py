@@ -11,10 +11,10 @@ class AllTests( unittest.TestCase ):
    
     def test_parse_url_path(self):
       #""" description goes here """
-      self.assert_( parse_url_path('/bucket') == ('bucket',None,None))
-      self.assert_( parse_url_path('/bucket/key') == ('bucket','key',None))
-      self.assert_( parse_url_path('/bucket/','max-keys=1000') == ('bucket',None,'max-keys=1000'))
-      self.assert_( parse_url_path('/asdf','location') == ('asdf',None,'location'))
+      self.assert_( parse_url_path('/bucket') == ('bucket',None))
+      self.assert_( parse_url_path('/bucket/key') == ('bucket','key'))
+      self.assert_( parse_url_path('/bucket/') == ('bucket',None))
+      self.assert_( parse_url_path('/asdf') == ('asdf',None))
     
     def test_quote_xml(self):
        
@@ -27,7 +27,10 @@ class AllTests( unittest.TestCase ):
 
     def test_temp(self): 
         
-        print '123456789'[3:5] 
+        s = None
+        print long(s.strip()) if s and s.strip().isdigit() else 0
+        
+      #  print '123456789'[3:5] 
         
         #print time.strftime('%a, %d %b %Y %H:%M:%S GMT')
         

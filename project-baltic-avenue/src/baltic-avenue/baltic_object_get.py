@@ -9,13 +9,11 @@ class GetObjectOperation(S3Operation):
     
 
     def go(self, bucket, key, query_string):
-        logging.info('GET bucket [%s] key [%s] query-string [%s]' % (bucket,key,query_string))
+        logging.info('GET bucket [%s] key [%s] query-params [%s]' % (bucket,key,self.request.params))
         
-        query_args = {}
-        if query_string == 'acl':
-            query_args['acl'] = ''
+       
             
-        if not self.check_auth(bucket,key,query_args=query_args):
+        if not self.check_auth(bucket,key,query_args=self.request.params):
             return
         
         
@@ -41,7 +39,7 @@ class GetObjectOperation(S3Operation):
             
             
         # acl
-        if query_args.has_key('acl'):   
+        if self.request.params.has_key('acl'):   
             temp = self.requestor
             self.response.headers['Content-Type'] = 'application/xml'
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner>')

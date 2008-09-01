@@ -100,15 +100,15 @@ class MainPage(webapp.RequestHandler):
         
         
         # GET bucket
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
-            GetBucketOperation(self.request,self.response).go(m[0],m[2]) 
+            GetBucketOperation(self.request,self.response).go(m[0]) 
             return
 
         # GET object
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and m[1]:
-            GetObjectOperation(self.request,self.response).go(m[0],m[1],m[2]) 
+            GetObjectOperation(self.request,self.response).go(m[0],m[1]) 
             return
 
 
@@ -127,13 +127,13 @@ class MainPage(webapp.RequestHandler):
         del self.response.headers['Content-Type']
         
         # PUT bucket
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
             PutBucketOperation(self.request,self.response).go(m[0]) 
             return
             
         # PUT object
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and m[1]:
             PutObjectOperation(self.request,self.response).go(m[0],m[1]) 
             return
@@ -152,13 +152,13 @@ class MainPage(webapp.RequestHandler):
         del self.response.headers['Content-Type']
         
         # DELETE bucket
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
             DeleteBucketOperation(self.request,self.response).go(m[0]) 
             return
         
         # DELETE object
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and m[1]:
             DeleteObjectOperation(self.request,self.response).go(m[0],m[1]) 
             return
@@ -175,13 +175,13 @@ class MainPage(webapp.RequestHandler):
         del self.response.headers['Content-Type']
         
         # HEAD bucket
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
             HeadBucketOperation(self.request,self.response).go(m[0]) 
             return
         
         # HEAD object
-        m = parse_url_path(self.request.path,self.request.query_string)
+        m = parse_url_path(self.request.path)
         if m[0] and m[1]:
             HeadObjectOperation(self.request,self.response).go(m[0],m[1]) 
             return
