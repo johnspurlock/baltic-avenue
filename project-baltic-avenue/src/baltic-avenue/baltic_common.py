@@ -1,5 +1,6 @@
 from datetime import tzinfo, timedelta, datetime
 from baltic_model import *
+from baltic_utils import *
 
 import base64
 import urllib
@@ -97,11 +98,15 @@ class S3Operation():
 
 
 
-    
+        # add the key.  even if it doesn't exist, add the slash
+        if key:
+            buf += '/' + urllib.quote_plus(key)
+            
         # handle special query string arguments
     
         if query_args.has_key("acl"):
-            buf += '/'  # only add a trailing slash for acl???
+            if not key:
+                buf += '/'  # only add a trailing slash for acl???
             buf += "?acl"
         elif query_args.has_key("torrent"):
             buf += "?torrent"
@@ -110,9 +115,7 @@ class S3Operation():
         elif query_args.has_key("location"):
             buf += "?location"
     
-        # add the key.  even if it doesn't exist, add the slash
-        if key:
-            buf += '/' + urllib.quote_plus(key)
+
     
     
         return buf
@@ -186,7 +189,18 @@ class S3Operation():
             existing_oi.acl.delete()
             existing_oi.delete()
 
-
+    def object_metadata_as_response_headers(self, object_info):
+        self.response.headers['Content-Length'] = str(object_info.size)  # this doesn't seem to work for head requests
+        self.response.headers['ETag'] = str(object_info.etag)
+        self.response.headers['Last-Modified'] = 'Sat, 03 May 2008 20:39:11 GMT'
+        for h in object_info.dynamic_properties():
+            if h.lower().startswith('x-amz-meta-') or h.lower() in ['content-type','cache-control','content-disposition','expires','content-encoding']:
+                value = getattr(object_info,h)
+                if h.lower() == 'content-disposition':
+                    h = 'Content-Disposition'
+                if h.lower() == 'content-encoding':
+                    h = 'Content-Encoding'
+                self.response.headers[h] = str(value)
 
 
 
@@ -207,7 +221,7 @@ class S3Operation():
     def error_invalid_signature(self, sig, aws_key, string_to_sign):
         self.error_generic(403,'SignatureDoesNotMatch','The request signature we calculated does not match the signature you provided. Check your key and signing method.',
                            {'SignatureProvided':sig,
-                            'StringToSignBytes':'44 45 4c 45 54 45 0a 0a 0a 0a 78 2d 61 6d 7a 2d 64 61 74 65 3a 53 75 6e 2c 20 33 31 20 41 75 67 20 3230 30 38 20 31 38 3a 34 33 3a 30 32 20 47 4d 54 0a 2f 78 78 78 78 61 73 66 61 73 6c 64 6b 66 6a 6c 6b 61 73 66 6a 6c 6b 61 73 6a 64 66 6b 6c 78 2f',
+                            'StringToSignBytes':string_to_sign_bytes(string_to_sign),
                             'AWSAccessKeyId':aws_key,
                             'StringToSign':string_to_sign})
         

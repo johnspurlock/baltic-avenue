@@ -8,7 +8,10 @@ def http_date(value):
 
 def escape_xml(value):
     return saxutils.quoteattr("'" + value)[2:-1]
-    
+
+def string_to_sign_bytes(value):
+    return ' '.join(['%02x' % ord(b) for b in value.encode('utf-8')])
+
 def parse_url_path(url_path, query_string=None):
     """ returns bucket, key, query string """
 

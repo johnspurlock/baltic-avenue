@@ -4,6 +4,7 @@ from baltic_common import S3Operation, utc
 from baltic_model import *
 import md5
 
+
 class PutObjectOperation(S3Operation):
     
 
@@ -53,6 +54,17 @@ class PutObjectOperation(S3Operation):
             size=len(contents),
             owner = self.requestor,
             acl = acl)
+        
+        
+      
+        #logging.info('\n' + '\n'.join(['%s: %s' % (h,self.request.headers[h]) for h in self.request.headers]))
+        
+        # save optional metadata as expando properties
+        for h in self.request.headers:
+            if h.lower().startswith('x-amz-meta-') or h.lower() in ['content-type','cache-control','content-disposition','expires','content-encoding']:
+                value = self.request.headers.get(h)
+                oi.__setattr__(h.lower(),value)
+
         oi.put()
         
         oc = ObjectContents(

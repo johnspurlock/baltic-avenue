@@ -8,10 +8,14 @@ class GetObjectOperation(S3Operation):
     
     
 
-    def go(self, bucket, key):
-        logging.info('GET bucket [%s] key [%s]' % (bucket,key))
+    def go(self, bucket, key, query_string):
+        logging.info('GET bucket [%s] key [%s] query-string [%s]' % (bucket,key,query_string))
         
-        if not self.check_auth(bucket,key):
+        query_args = {}
+        if query_string == 'acl':
+            query_args['acl'] = ''
+            
+        if not self.check_auth(bucket,key,query_args=query_args):
             return
         
         
@@ -35,11 +39,27 @@ class GetObjectOperation(S3Operation):
             return
             
             
+            
+        # acl
+        if query_args.has_key('acl'):   
+            temp = self.requestor
+            self.response.headers['Content-Type'] = 'application/xml'
+            self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner>')
+            self.response.out.write(u'<ID>%s</ID>' % temp.id)
+            self.response.out.write(u'<DisplayName>%s</DisplayName>' % temp.display_name)
+            self.response.out.write(u'</Owner><AccessControlList><Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser">')
+            self.response.out.write(u'<ID>%s</ID>' % temp.id)
+            self.response.out.write(u'<DisplayName>%s</DisplayName>' % temp.display_name)
+            self.response.out.write(u'</Grantee><Permission>FULL_CONTROL</Permission></Grant></AccessControlList></AccessControlPolicy>')
+            return
+            
+            
+            
         existing_oc = ObjectContents.gql("WHERE ANCESTOR IS :1 LIMIT 1", existing_oi).get()
         
         
         self.response.set_status(200)
-        #self.response.headers['Content-Type'] = 'temp'
+        self.object_metadata_as_response_headers(existing_oi)
         self.response.out.write(existing_oc.contents)
         
         

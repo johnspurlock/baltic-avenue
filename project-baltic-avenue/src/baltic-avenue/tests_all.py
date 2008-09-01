@@ -5,7 +5,6 @@ from baltic_utils import *
 
 
 
-
 class AllTests( unittest.TestCase ):
    """ Class to test validation functions """
    
@@ -21,7 +20,10 @@ class AllTests( unittest.TestCase ):
        
        #print escape_xml('"cef7ccd89dacf1ced6f5ec91d759953f"')
        self.assert_(escape_xml('\"cef7ccd89dacf1ced6f5ec91d759953f\"') == "&quot;cef7ccd89dacf1ced6f5ec91d759953f&quot;")
-
+       
+       
+   def test_string_to_sign_bytes(self):
+       self.assert_( string_to_sign_bytes(u'\n\u1234') , '0a e1 88 b4')
 
 def TestSuite():
    return unittest.makeSuite(AllTests)

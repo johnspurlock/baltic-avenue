@@ -96,7 +96,7 @@ class MainPage(webapp.RequestHandler):
         # GET object
         m = parse_url_path(self.request.path,self.request.query_string)
         if m[0] and m[1]:
-            GetObjectOperation(self.request,self.response).go(m[0],m[1]) 
+            GetObjectOperation(self.request,self.response).go(m[0],m[1],m[2]) 
             return
 
 

@@ -29,7 +29,7 @@ class Bucket(db.Model):
     creation_date = db.DateTimeProperty(required=True)
     acl = db.ReferenceProperty(ACL,required=True)
     
-class ObjectInfo(db.Model):
+class ObjectInfo(db.Expando):
     bucket = db.ReferenceProperty(Bucket,required=True)  #parent
     name1 = db.StringProperty(required=True)
     name2 = db.StringProperty()
@@ -39,12 +39,11 @@ class ObjectInfo(db.Model):
     size = db.IntegerProperty(required=True)  #aka content-length
     owner = db.ReferenceProperty(Principal,required=True)
     acl = db.ReferenceProperty(ACL,required=True)
-    #other metadata?
 
 
 class ObjectContents(db.Model):
     object_info = db.ReferenceProperty(ObjectInfo,required=True) #parent
-    contents = db.BlobProperty(required=True)
+    contents = db.BlobProperty()  # not required to support zero-byte files
 
 class LogRecord(db.Model):
     bucket_owner = db.StringProperty(required=True) #principal.id

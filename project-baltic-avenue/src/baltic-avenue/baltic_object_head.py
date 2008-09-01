@@ -8,6 +8,9 @@ from baltic_utils import *
 
 class HeadObjectOperation(S3Operation):
 
+
+
+
     def go(self, bucket, key):
         logging.info('HEAD bucket [%s] key [%s]' % (bucket, key))
         
@@ -39,5 +42,7 @@ class HeadObjectOperation(S3Operation):
         
         self.response.set_status(200)
 
+        self.object_metadata_as_response_headers(existing_oi)
 
+        
 
