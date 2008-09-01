@@ -4,7 +4,7 @@ from baltic_common import S3Operation, utc
 from baltic_model import *
 from baltic_utils import *
 import md5
-
+import base64
 
 class PutObjectOperation(S3Operation):
     
@@ -44,18 +44,36 @@ class PutObjectOperation(S3Operation):
             return
         
         
-        # delete existing object (if exists)
-        self.delete_object_if_exists(b,key)
-        
         
         # load contents into buffer 
         contents = self.request.body
         
-        # compute hash for etag
+        # compute hash for etag and digest check
         m = md5.new()
         m.update(contents)
+        
+        # if content-md5 provided, check contents digest
+        client_content_md5 = self.request.headers.get('content-md5')
+        if client_content_md5 : 
+            server_content_md5 = base64.standard_b64encode(m.digest())
+            logging.info('client_content_md5 %s' % client_content_md5)
+            logging.info('server_content_md5 %s' % server_content_md5)
+            if server_content_md5 != client_content_md5:
+                self.error_bad_digest(client_content_md5, server_content_md5)
+                return
+            
+            
+    
+    
+        # ok, everything checks out
+        self.response.set_status(200)
+          
+        
+        # delete existing object (if exists)
+        self.delete_object_if_exists(b,key)
+        
 
-        # save object
+        # save object-info and acl
         acl = ACL(owner=self.requestor)
         acl.put()
         
@@ -79,20 +97,18 @@ class PutObjectOperation(S3Operation):
         for h in self.request.headers:
             if h.lower().startswith('x-amz-meta-') or h.lower() in ['content-type','cache-control','content-disposition','expires','content-encoding']:
                 value = self.request.headers.get(h)
+                if not self.is_development_server() and h.lower() == 'content-type' and self.request.environ.get('HTTP_CONTENT_TYPE'):
+                    value = self.request.environ.get('HTTP_CONTENT_TYPE')
                 oi.__setattr__(h.lower(),value)
 
         oi.put()
         
+        # save object contents
         oc = ObjectContents(
             parent=oi,
             object_info = oi,
             contents=contents)
         oc.put()
         
-       
-        self.response.set_status(200)
         
-        
-        
-      
-      
+    

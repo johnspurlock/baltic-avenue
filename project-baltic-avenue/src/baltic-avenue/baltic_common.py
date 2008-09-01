@@ -55,11 +55,19 @@ class S3Operation():
         
         AMAZON_HEADER_PREFIX = 'x-amz-'
         
+        #for e in self.request.environ:
+        #    logging.info('%s %s' % (e, self.request.environ[e]))
+        
+        
         interesting_headers = {}
         for header_key in headers:
+            #logging.info('header_key %s' % header_key)
             lk = header_key.lower()
-            if lk in ['content-md5', 'content-type', 'date'] or lk.startswith(AMAZON_HEADER_PREFIX):
-                interesting_headers[lk] = headers[header_key].strip()
+            if lk in ['content-md5','date','content-type'] or lk.startswith(AMAZON_HEADER_PREFIX):
+                if not self.is_development_server() and lk == 'content-type' and self.request.environ.get('HTTP_CONTENT_TYPE'):
+                    interesting_headers[lk] = self.request.environ['HTTP_CONTENT_TYPE']
+                else:
+                    interesting_headers[lk] = headers[lk].strip() 
     
         # workaround for dev_appserver defaulting content-type to application/x-www-form-urlencoded
         # assume that form-urlencoded means none provided
@@ -204,6 +212,7 @@ class S3Operation():
         self.response.headers['Content-Length'] = str(object_info.size)  # this doesn't seem to work for head requests
         self.response.headers['ETag'] = str(object_info.etag)
         self.response.headers['Last-Modified'] = date_format_2(object_info.last_modified)
+ 
         for h in object_info.dynamic_properties():
             if h.lower().startswith('x-amz-meta-') or h.lower() in ['content-type','cache-control','content-disposition','expires','content-encoding']:
                 value = getattr(object_info,h)
@@ -215,7 +224,8 @@ class S3Operation():
 
 
 
-
+    def is_development_server(self):
+        return self.request.environ.get('SERVER_SOFTWARE') == 'Development/1.0'
 
 
 
@@ -267,6 +277,8 @@ class S3Operation():
     def error_invalid_argument(self, arg_name, arg_value, message):
         self.error_generic(400,'InvalidArgument',message,{'ArgumentName':arg_name, 'ArgumentValue':arg_value})
 
+    def error_bad_digest(self, client, server):
+        self.error_generic(400, 'BadDigest', 'The Content-MD5 you specified did not match what we received.', {'CalculatedDigest':server,'ExpectedDigest':client})
 
     def error_generic(self, status, code, message, fields={}):
         self.response.set_status(status)

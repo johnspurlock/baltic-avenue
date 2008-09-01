@@ -3,7 +3,6 @@
 remaining features
 -------------------
 acl/get acl file 
-content-md5 on puts
 query string auth
 run the principal import once on startup (how?)
 request time too skewed
@@ -22,7 +21,8 @@ no ssl						http://code.google.com/p/googleappengine/issues/detail?id=15
 1000 files max				http://code.google.com/p/googleappengine/issues/detail?id=161
 no bittorrent		
 no vhost-style requests  	http://code.google.com/p/googleappengine/issues/detail?id=113
-
+cannot set content-encoding (or content-length) response headers
+							http://code.google.com/p/googleappengine/issues/detail?id=198
 
 
 
