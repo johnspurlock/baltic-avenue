@@ -13,7 +13,7 @@ class PutObjectOperation(S3Operation):
     def go(self, bucket, key):
         logging.info('PUT bucket [%s] key [%s]' % (bucket,key))
         
-        if not self.check_auth(bucket,key):
+        if not self.check_auth(bucket,key,query_args=self.request.params):
             return
         
         
@@ -32,6 +32,40 @@ class PutObjectOperation(S3Operation):
             return
         
         
+        # put acl
+        if self.request.params.has_key('acl'):
+            
+            existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()
+            
+            object_acl = existing_oi.acl
+            
+            # check acl
+            if not self.check_permission(object_acl,'WRITE_ACP'): return
+                
+            client_acl = parse_acl(self.request.body) 
+            
+            acl = ACL(owner=self.requestor)
+            acl.put()
+            
+            for client_grant in client_acl.grants:
+                principal = UserPrincipal.gql("WHERE id = :1",client_grant.grantee.id).get()
+                grant = ACLGrant(acl=acl,permission=client_grant.permission,grantee=principal)
+                grant.put()
+            
+            existing_oi.acl = acl
+            existing_oi.put()
+            
+            
+            self.response.set_status(200)
+            return
+        
+        
+        
+        
+        
+        
+        # check acl
+        if not self.check_permission(b.acl,'WRITE'): return
         
         # unencode the key
         key = url_encode(key)
@@ -44,6 +78,13 @@ class PutObjectOperation(S3Operation):
             return
         
         
+        # ensure x-amz-acl is valid if provided
+        canned_access_policy = self.request.headers.get('x-amz-acl')
+        if canned_access_policy and canned_access_policy not in ['private','authenticated-read','public-read','public-read-write','log-delivery-write']:
+            self.error_invalid_argument('x-amz-acl',canned_access_policy,'')
+            return
+
+
         
         # load contents into buffer 
         contents = self.request.body
@@ -73,10 +114,17 @@ class PutObjectOperation(S3Operation):
         self.delete_object_if_exists(b,key)
         
 
-        # save object-info and acl
+        # construct and save acl
         acl = ACL(owner=self.requestor)
         acl.put()
         
+        canned_access_policy = canned_access_policy or 'private'
+        if canned_access_policy == 'private':
+            grant = ACLGrant(acl=acl,grantee=self.requestor,permission='FULL_CONTROL')
+            grant.put()
+        
+        
+        # construct and save object-info
         oi = ObjectInfo(
             parent=b,
             bucket=b,

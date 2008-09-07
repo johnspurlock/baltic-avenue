@@ -28,6 +28,8 @@ class DeleteObjectOperation(S3Operation):
             self.error_access_denied()
             return
         
+        # check acl
+        if not self.check_permission(b.acl,'WRITE'): return
         
         # unencode the key
         key = url_encode(key)

@@ -41,7 +41,11 @@ class HeadObjectOperation(S3Operation):
             self.response.set_status(404)
             return
         
-        
+        # check acl
+        if not self.check_permission(existing_oi.acl,'READ'): return
+      
+      
+      
         self.response.set_status(200)
 
         self.object_metadata_as_response_headers(existing_oi)

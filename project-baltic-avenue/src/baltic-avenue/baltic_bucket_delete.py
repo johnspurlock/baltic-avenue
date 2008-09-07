@@ -27,6 +27,10 @@ class DeleteBucketOperation(S3Operation):
             self.error_access_denied()
             return
         
+        # check acl
+        if not self.check_permission(b.acl,'WRITE'): return
+        
+        
         # make sure the bucket is empty
         is_empty = ObjectInfo.gql("WHERE ANCESTOR IS :1 LIMIT 1",b).count() == 0
         if not is_empty:

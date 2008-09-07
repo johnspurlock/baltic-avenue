@@ -12,9 +12,9 @@ class HeadBucketOperation(S3Operation):
             return
     
         
-        # 200 if you own it, 403 if someone else owns it, else 404
+        # 200 if you own it (and have READ), 403 if someone else owns it, else 404
         b = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
-        if b and b.owner.id == self.requestor.id:
+        if b and b.owner.id == self.requestor.id and self.check_permission(b.acl,'READ'):
             self.response.set_status(200)
         elif b:
             self.response.set_status(403)

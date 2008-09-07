@@ -43,20 +43,35 @@ class GetObjectOperation(S3Operation):
             
             
         # acl
+        object_acl = existing_oi.acl
         if self.request.params.has_key('acl'):   
-            temp = self.requestor
+               
+            # check acl
+            if not self.check_permission(object_acl,'READ_ACP'): return
+
+
             self.response.headers['Content-Type'] = 'application/xml'
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner>')
-            self.response.out.write(u'<ID>%s</ID>' % temp.id)
-            self.response.out.write(u'<DisplayName>%s</DisplayName>' % temp.display_name)
-            self.response.out.write(u'</Owner><AccessControlList><Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser">')
-            self.response.out.write(u'<ID>%s</ID>' % temp.id)
-            self.response.out.write(u'<DisplayName>%s</DisplayName>' % temp.display_name)
-            self.response.out.write(u'</Grantee><Permission>FULL_CONTROL</Permission></Grant></AccessControlList></AccessControlPolicy>')
+            self.response.out.write(u'<ID>%s</ID>' % object_acl.owner.id)
+            self.response.out.write(u'<DisplayName>%s</DisplayName>' % object_acl.owner.display_name)
+            self.response.out.write(u'</Owner><AccessControlList>')
+            
+            for grant in object_acl.grants:
+                self.response.out.write(u'<Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser">')
+                self.response.out.write(u'<ID>%s</ID>' % grant.grantee.id)
+                self.response.out.write(u'<DisplayName>%s</DisplayName>' % grant.grantee.display_name)
+                self.response.out.write(u'</Grantee><Permission>%s</Permission></Grant>' % grant.permission)
+                
+            self.response.out.write(u'</AccessControlList></AccessControlPolicy>')
             return
             
             
             
+        # check acl
+        if not self.check_permission(object_acl,'READ'): return
+        
+        
+        # load contents
         existing_oc = ObjectContents.gql("WHERE ANCESTOR IS :1 LIMIT 1", existing_oi).get()
         
         

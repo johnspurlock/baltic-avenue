@@ -31,5 +31,53 @@ def parse_url_path(url_path):
 def url_encode(value):
     return value.replace('%2f','/')
 
+def parse_acl(acl_xml):
+    
+    import xml.dom.minidom
+    
+    dom = xml.dom.minidom.parseString(acl_xml)
+    xmlns = 'http://s3.amazonaws.com/doc/2006-03-01/'
+    
+    def find_one(parent, elementName):
+        for n in parent.childNodes:
+            if n.namespaceURI == xmlns and n.localName == elementName:
+                return n
+    
+    def find_all(parent, elementName):
+        for n in parent.childNodes:
+            if n.namespaceURI == xmlns and n.localName == elementName:
+                yield n
+    
+    class C(object):
+        pass
+    
+    rt = C()
+    
+    acp = find_one(dom,'AccessControlPolicy')
+    
+   
+    rt.owner = C()
+    owner = find_one(acp,'Owner')
+    rt.owner.id = find_one(owner,'ID').childNodes[0].data
+    rt.owner.display_name = find_one(owner,'DisplayName').childNodes[0].data
+    rt.grants = []
+    
+    acl = find_one(acp,'AccessControlList')
+    
+    for grant_node in find_all(acl,'Grant'):
+    
+        grant = C()
+        grant.grantee = C()
+        grantee = find_one(grant_node,'Grantee')
+        grant.grantee.id = find_one(grantee,'ID').childNodes[0].data
+        display_name_node = find_one(grantee,'DisplayName')
+        if display_name_node:
+            grant.grantee.display_name = display_name_node.childNodes[0].data
+        grant.permission = find_one(grant_node,'Permission').childNodes[0].data      
+        rt.grants.append(grant)
+     
+    
+    return rt
+
     
     

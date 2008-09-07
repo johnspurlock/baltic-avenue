@@ -47,19 +47,34 @@ class GetBucketOperation(S3Operation):
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n\n<BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n<!--<LoggingEnabled><TargetBucket>myLogsBucket</TargetBucket><TargetPrefix>add/this/prefix/to/my/log/files/access_log-</TargetPrefix></LoggingEnabled>-->\n</BucketLoggingStatus>')
             return
         
-        # acl
+        # return acl
         if self.request.params.has_key('acl'):
-            temp = self.requestor
+            bucket_acl = b.acl
+            
+            # check acl
+            if not self.check_permission(bucket_acl,'READ_ACP'): return
+            
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner>')
-            self.response.out.write(u'<ID>%s</ID>' % temp.id)
-            self.response.out.write(u'<DisplayName>%s</DisplayName>' % temp.display_name)
-            self.response.out.write(u'</Owner><AccessControlList><Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser">')
-            self.response.out.write(u'<ID>%s</ID>' % temp.id)
-            self.response.out.write(u'<DisplayName>%s</DisplayName>' % temp.display_name)
-            self.response.out.write(u'</Grantee><Permission>FULL_CONTROL</Permission></Grant></AccessControlList></AccessControlPolicy>')
+            self.response.out.write(u'<ID>%s</ID>' % bucket_acl.owner.id)
+            self.response.out.write(u'<DisplayName>%s</DisplayName>' % bucket_acl.owner.display_name)
+            self.response.out.write(u'</Owner><AccessControlList>')
+            
+            
+            for grant in bucket_acl.grants:
+                self.response.out.write(u'<Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser">')
+                self.response.out.write(u'<ID>%s</ID>' % grant.grantee.id)
+                self.response.out.write(u'<DisplayName>%s</DisplayName>' % grant.grantee.display_name)
+                self.response.out.write(u'</Grantee><Permission>%s</Permission></Grant>' % grant.permission)
+                
+                
+            
+            self.response.out.write(u'</AccessControlList></AccessControlPolicy>')
             return
         
-
+    
+        # check acl
+        if not self.check_permission(b.acl,'READ'): return
+            
 
 
         

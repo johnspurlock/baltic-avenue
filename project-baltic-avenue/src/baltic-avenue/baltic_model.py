@@ -17,7 +17,7 @@ class ACL(db.Model):
     owner = db.ReferenceProperty(Principal,required=True)  #parent
 
 class ACLGrant(db.Model):
-    acl = db.ReferenceProperty(ACL,required=True)  #parent
+    acl = db.ReferenceProperty(ACL,required=True,collection_name='grants')  #parent
     grantee = db.ReferenceProperty(Principal,required=True)
     permission = db.StringProperty(required=True,choices=['READ','WRITE','READ_ACP','WRITE_ACP','FULL_CONTROL'])
 

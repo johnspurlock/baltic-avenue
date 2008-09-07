@@ -64,8 +64,8 @@ class S3Operation():
             #logging.info('header_key %s' % header_key)
             lk = header_key.lower()
             if lk in ['content-md5','date','content-type'] or lk.startswith(AMAZON_HEADER_PREFIX):
-                if not self.is_development_server() and lk == 'content-type' and self.request.environ.get('HTTP_CONTENT_TYPE'):
-                    interesting_headers[lk] = self.request.environ['HTTP_CONTENT_TYPE']
+                if not self.is_development_server() and lk == 'content-type':
+                    interesting_headers[lk] = self.request.environ.get('HTTP_CONTENT_TYPE') or ''
                 else:
                     interesting_headers[lk] = headers[lk].strip() 
     
@@ -107,19 +107,21 @@ class S3Operation():
     
         # append the bucket if it exists
         if bucket != '':
-            buf += "%s" % bucket
+            buf += "%s" % bucket 
 
 
 
-        # add the key.  even if it doesn't exist, add the slash
+        # add the key
         if key:
-            buf += '/' + key #urllib.quote_plus(key)
-            
+            buf +=  '/' + key #urllib.quote_plus(key)
+        elif self.request.path.endswith('/') and len(self.request.path) > 1:
+        #elif self.request.path != '/':
+            buf +=  '/'
         # handle special query string arguments
     
         if query_args.has_key("acl"):
-            if not key:
-                buf += '/'  # only add a trailing slash for acl???
+           # if not key:
+            #    buf += '/'  # only add a trailing slash for acl???
             buf += "?acl"
         elif query_args.has_key("torrent"):
             buf += "?torrent"
@@ -228,8 +230,15 @@ class S3Operation():
         return self.request.environ.get('SERVER_SOFTWARE') == 'Development/1.0'
 
 
-
-
+    def check_permission(self, acl, permission):
+        if permission in ['READ_ACP','WRITE_ACP'] and acl.owner.id == self.requestor.id:
+            return True
+        for grant in acl.grants:
+            if grant.grantee.id == self.requestor.id and grant.permission in [permission,'FULL_CONTROL']:
+                return True
+        self.error_access_denied()
+        return False
+    
 
 
 
