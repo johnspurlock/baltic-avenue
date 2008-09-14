@@ -39,9 +39,13 @@ class DeleteBucketOperation(S3Operation):
         
         
         # delete it!
+        for cp in CommonPrefix.all().filter('bucket =',b):
+            cp.delete()
         b.acl.delete()
         b.delete()
-            
+        
+
+        
         
         self.response.set_status(204)
     

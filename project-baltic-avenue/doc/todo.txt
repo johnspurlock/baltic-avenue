@@ -2,12 +2,16 @@
 
 remaining features
 -------------------
+acl (groups) / anonymous access
+admin page: run the principal import once on startup (how?)
+bucket access logging (simple)
+better logging
+----
 test with jets3t
-acl (groups)
+test with s3sync
 not implemented errors
 wrap backend errors into 500 errors
 query string auth
-run the principal import once on startup (how?)
 request time too skewed
 copy
 unicode
@@ -16,22 +20,34 @@ POST object
 handle underscores (and other difficult chars)
 concurrent access/transactions+entity groups
 performance tweaks - imports and memcache
-bucket access logging?
 location constraints?
+bucket access logging? (full)
+(move this list to google code site?)
 
 
 
-limitations
+
+
+limitations - appengine
 ---------------------
 no ssl/https				http://code.google.com/p/googleappengine/issues/detail?id=15
 1mb max						http://code.google.com/p/googleappengine/issues/detail?id=78
-1000 files max				http://code.google.com/p/googleappengine/issues/detail?id=161
 no bittorrent		
 no vhost-style requests  	http://code.google.com/p/googleappengine/issues/detail?id=113
 content-encoding (and content-length) headers can be saved, but not returned
 							http://code.google.com/p/googleappengine/issues/detail?id=198
 
+limitations - other
+----------------------
+only / supported as the delimiter
 
 
+
+
+
+notes
+---------------------------
+--clear_datastore
+--require_indexes
 
 

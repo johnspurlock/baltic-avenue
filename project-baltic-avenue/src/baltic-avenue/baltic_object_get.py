@@ -32,7 +32,7 @@ class GetObjectOperation(S3Operation):
         
         
         # unencode the key
-        key = url_encode(key)
+        key = url_unencode(key)
         
         
         existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()

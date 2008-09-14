@@ -43,6 +43,8 @@ class MainPage(webapp.RequestHandler):
                 for x in module.__dict__ 
                 if module.__dict__[x].__class__ in (GroupPrincipal,UserPrincipal)]
         
+        
+    
    
     def update_principals(self):
         
@@ -64,7 +66,52 @@ class MainPage(webapp.RequestHandler):
                 p.put()
         
         
+        
+    def clear_data(self):
+        
+        types = [Bucket,ACL,ACLGrant,CommonPrefix,ObjectContents,ObjectInfo,LogRecord]
+        
+        for t in types:
+            
+            items = t.all().fetch(100)
+            while len(items)>0:
+                for i in items: i.delete()
+                items = t.all().fetch(100)
+        
+      
+        
+        
+        
+        
     def temp(self):
+        
+        #self.update_principals()
+        self.clear_data()
+        return
+        
+        from datetime import datetime
+        
+        bucket = 'om2'
+        
+        b = Bucket.all()[0]
+        
+        bucket_owner = b.owner.id
+        time = now = datetime.utcnow()
+        remote_ip = self.request.remote_addr
+        requestor = b.owner.id
+        data = {'bucket_owner':bucket_owner,'bucket':bucket,'time':time,'remote_ip':remote_ip}
+        
+        s = '\n'.join(map(lambda x:'%s:%s'%(x,data[x]),data))
+        
+        self.response.out.write(s)
+        return
+        r = LogRecord(
+                      bucket_owner=bucket_owner,
+                      bucket=bucket,
+                      time=time,
+                      remote_ip = remote_ip)
+        
+        
         #self.update_principals()
         b = Bucket.gql("WHERE name1 = :1 ",  'bk2').get()
         

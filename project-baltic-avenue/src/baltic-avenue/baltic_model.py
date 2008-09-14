@@ -27,6 +27,16 @@ class Bucket(db.Model):
     creation_date = db.DateTimeProperty(required=True)
     acl = db.ReferenceProperty(ACL,required=True)
     
+class CommonPrefix(db.Model):
+    bucket = db.ReferenceProperty(Bucket,required=True) 
+    common_prefix = db.SelfReferenceProperty(collection_name='children')
+    name1 = db.StringProperty()    # allowed to be ''
+    name2 = db.StringProperty()
+    name3 = db.StringProperty()    # keys can be at max 1024 bytes utf-8 encoded
+    
+    def full_name(self):
+        return (self.name1 or '') + (self.name2 or '') + (self.name3 or '')
+    
 class ObjectInfo(db.Expando):
     bucket = db.ReferenceProperty(Bucket,required=True)  #parent
     name1 = db.StringProperty(required=True)
@@ -37,6 +47,7 @@ class ObjectInfo(db.Expando):
     size = db.IntegerProperty(required=True)  #aka content-length
     owner = db.ReferenceProperty(Principal,required=True)
     acl = db.ReferenceProperty(ACL,required=True)
+    common_prefix = db.ReferenceProperty(CommonPrefix,required=True)
 
     def full_name(self):
         return self.name1 +  self.name2 +  self.name3

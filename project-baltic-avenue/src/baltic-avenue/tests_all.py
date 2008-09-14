@@ -11,6 +11,9 @@ import time
 class AllTests( unittest.TestCase ):
     """ Class to test validation functions """
    
+   
+    
+   
     def test_parse_url_path(self):
       #""" description goes here """
       self.assert_( parse_url_path('/bucket') == ('bucket',None))
@@ -48,10 +51,33 @@ class AllTests( unittest.TestCase ):
           self.assert_('FULL_CONTROL'==acl.grants[0].permission)
         
           
+          
+          
+    def test_compute_common_prefix(self):
+        
+        #print compute_common_prefix('a/a')
+        self.assert_('a/a/'==compute_common_prefix('a/a/'))
+        self.assert_('a/'==compute_common_prefix('a/a'))
+        self.assert_('a/'==compute_common_prefix('a/'))
+        self.assert_(''==compute_common_prefix('a'))
+        self.assert_('/'==compute_common_prefix('/'))
+        
+        
+        
     def test_temp(self): 
         
-        s = None
-        print long(s.strip()) if s and s.strip().isdigit() else 0
+        
+        def y():
+            print "1"
+            yield 1
+            print "3"
+            yield 3
+            print "5"
+            yield 5
+        
+        s = combine(y(),[2,4,6])
+        print 'ASDF %s' % list(s)
+        #print long(s.strip()) if s and s.strip().isdigit() else 0
         
       #  print '123456789'[3:5] 
         

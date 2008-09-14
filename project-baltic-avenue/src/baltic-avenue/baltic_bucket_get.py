@@ -95,13 +95,13 @@ class GetBucketOperation(S3Operation):
         
         
         # validate and unencode delimiter
-        delimiter = url_encode(self.request.params.get('delimiter') or '')
+        delimiter = url_unencode(self.request.params.get('delimiter') or '')
         
         # validate and unencode prefix
-        prefix = url_encode(self.request.params.get('prefix') or '')
+        prefix = url_unencode(self.request.params.get('prefix') or '')
         
         # validate and unencode marker
-        marker = url_encode(self.request.params.get('marker') or '')
+        marker = url_unencode(self.request.params.get('marker') or '')
         
         is_truncated = False
         next_marker = None
@@ -112,45 +112,62 @@ class GetBucketOperation(S3Operation):
             # return ordered by key name
             q = ObjectInfo.all().ancestor(b).order('name1').order('name2').order('name3') 
             
-            # filter as much as possible on the backend
-            # appengine only allows one neq filter, so we'll filter on name1
-            if len(prefix) > 0:
-                q = q.filter('name1 >=',prefix).filter('name1 <',prefix + u'\xEF\xBF\xBD')  # "starts-with" trick from http://code.google.com/appengine/docs/datastore/queriesandindexes.html
+            # NEW WAY filter on parent cp
+            parent_cp_full_name = compute_common_prefix(prefix)
+            q2 = CommonPrefix.all().filter('bucket =',b)
+            self.add_key_query_filters(q2,parent_cp_full_name)
+            parent_cp = q2.get()
             
-            # now fetch and post-process
-            for oi in q:    # using query as an iterable should lazy load in chunks, not buffer all objects...
+            if parent_cp:
+                         
+                # our single allowed filter will be based on common-prefix
+                q.filter('common_prefix = ',parent_cp)
                 
-                # only return items that start with the prefix (if provided)
-                if len(prefix) == 0 or oi.full_name().startswith(prefix):  
                     
-                    # only return items that are after the marker (if provided)
-                    if len(marker)==0 or oi.full_name() > marker:
-                        
-                        # compute common-prefix if delimiter supplied
-                        cp = None
-                        if len(delimiter) > 0:
-                            after_prefix = oi.full_name()[len(prefix):]
-                            next_delim_index = after_prefix.find(delimiter)
-                            if next_delim_index >-1:
-                                cp = prefix + after_prefix[0:next_delim_index+len(delimiter)]
-                                if cp in cps:
-                                    # this is not a new cp, keep going
-                                    continue
-                        
-                        # if we get to this point, we are about to add a cp or an oi
-                        if len(ois)+len(cps) == max_keys:
-                            is_truncated = True
-                            if len(delimiter) > 0:
-                                next_marker = max(ois[-1],cps[-1])
-                            break
-                        
-                        # add the new oi or cp to the result list
-                        if cp:
-                            cps.append(cp)
-                        else:
-                            ois.append(oi)
+                # if delimiter provided, grab all possible cps
+                possible_cps = []
+                if len(delimiter) > 0:
+                    possible_cps = list(parent_cp.children)
+                    possible_cps.sort(key=lambda cp: cp.full_name())
 
+                
+               
+                # now fetch and post-process
+                for item in combine(q,possible_cps,lambda x:x.full_name()):
+                    
+                    # only return items that start with the prefix (if provided)
+                    if len(prefix) == 0 or item.full_name().startswith(prefix):  
+                        
+                        # only return items that are after the marker (if provided)
+                        if len(marker)==0 or item.full_name() > marker:
+                            
+                            # compute common-prefix if delimiter supplied
+                            cp = None
+                            oi = None
+                            
+                           
+                            if isinstance(item,CommonPrefix):
+                                cp = item
+                            else:
+                                oi = item
+                                    
+                                    
+        
+                            # if we get to this point, we are about to add a cp or an oi
+                            if len(ois)+len(cps) == max_keys:
+                                is_truncated = True
+                                if len(delimiter) > 0:
+                                    next_marker = max(ois[-1],cps[-1])
+                                break
+                            
+                            # add the new oi or cp to the result list
+                            if cp:
+                                cps.append(cp)
+                            else:
+                                ois.append(oi)
 
+                                            
+    
 
 
         
@@ -160,7 +177,7 @@ class GetBucketOperation(S3Operation):
         self.response.out.write(u'<Prefix>%s</Prefix>' % prefix)
         self.response.out.write(u'<Marker>%s</Marker>' % marker)
         if next_marker:
-            self.response.out.write(u'<NextMarker>%s</NextMarker>' % next_marker)
+            self.response.out.write(u'<NextMarker>%s</NextMarker>' % next_marker.full_name())
         self.response.out.write(u'<MaxKeys>%s</MaxKeys>' % max_keys)
         self.response.out.write(u'<Delimiter>%s</Delimiter>' % delimiter)
         self.response.out.write(u'<IsTruncated>%s</IsTruncated>' % is_truncated)
@@ -180,7 +197,7 @@ class GetBucketOperation(S3Operation):
         if len(cps) > 0:
             self.response.out.write(u'<CommonPrefixes>')
             for cp in cps:
-                self.response.out.write(u'<Prefix>%s</Prefix>' % cp)
+                self.response.out.write(u'<Prefix>%s</Prefix>' % cp.full_name())
             self.response.out.write(u'</CommonPrefixes>')
 
         self.response.out.write(u'</ListBucketResult>')

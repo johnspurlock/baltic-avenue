@@ -28,8 +28,17 @@ def parse_url_path(url_path):
     
     return (None,None)
 
-def url_encode(value):
+def url_unencode(value):
     return value.replace('%2f','/')
+
+def url_encode(value):
+    return value.replace('/','%2f').replace('_','%5f').replace('-','%2d')
+
+def compute_common_prefix(key):
+    i = key.rfind('/')
+    return '' if i==-1 else key[:i+1]
+    
+    
 
 def parse_acl(acl_xml):
     
@@ -79,5 +88,20 @@ def parse_acl(acl_xml):
     
     return rt
 
+    
+def combine(expensive_seq, inexpensive_seq,fn):
+    
+    inexpensive_list = list(inexpensive_seq)
+    
+    for e in expensive_seq:
+        
+        while len(inexpensive_list) > 0 and fn(inexpensive_list[0]) < fn(e):
+            yield inexpensive_list.pop(0)
+        
+        yield e
+    
+    while len(inexpensive_list) > 0:
+        yield inexpensive_list.pop(0)
+        
     
     

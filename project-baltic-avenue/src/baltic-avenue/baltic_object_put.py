@@ -68,7 +68,7 @@ class PutObjectOperation(S3Operation):
         if not self.check_permission(b.acl,'WRITE'): return
         
         # unencode the key
-        key = url_encode(key)
+        key = url_unencode(key)
         
         # make sure the key is not too long
         max_size = 1024
@@ -102,8 +102,16 @@ class PutObjectOperation(S3Operation):
             if server_content_md5 != client_content_md5:
                 self.error_bad_digest(client_content_md5, server_content_md5)
                 return
+        
+        # if the content is larger than 1048406, appspot might reject it (quota)
+        max_size = 1048406
+        if len(contents) > max_size:
+            self.error_entity_too_large(len(contents),max_size)
+            return
             
-            
+    
+    
+    
     
     
         # ok, everything checks out
@@ -111,9 +119,8 @@ class PutObjectOperation(S3Operation):
           
         
         # delete existing object (if exists)
-        self.delete_object_if_exists(b,key)
+        old_oi = self.delete_object_if_exists(b,key)
         
-
         # construct and save acl
         acl = ACL(owner=self.requestor)
         acl.put()
@@ -124,6 +131,41 @@ class PutObjectOperation(S3Operation):
             grant.put()
         
         
+        
+        # locate or create common prefix
+        cp = old_oi.common_prefix if old_oi else None
+        if not cp:
+            def ensure_exists(full_name):
+                q = CommonPrefix.all()
+                q = q.filter('bucket = ',b)
+                q =  self.add_key_query_filters(q,full_name)
+                existing_cp = q.get()
+                if existing_cp:
+                    return existing_cp
+                
+                if full_name == '':
+                    new_cp = CommonPrefix(bucket=b,name1='',name2='',name3='')
+                    new_cp.put()
+                    logging.info('put [%s]' % new_cp.full_name())
+                    return new_cp
+                
+                parent_full_name = compute_common_prefix(full_name[:-1])
+                parent_cp = ensure_exists(parent_full_name)
+                
+                new_cp = CommonPrefix(
+                    bucket=b, 
+                    common_prefix=parent_cp,
+                    name1=full_name[0:500],
+                    name2=full_name[500:1000],
+                    name3=full_name[1000:1500])
+                new_cp.put()
+                logging.info('put [%s]' % new_cp.full_name())
+                return new_cp
+                
+            cp_full_name = compute_common_prefix(key)
+            cp = ensure_exists(cp_full_name)
+            
+
         # construct and save object-info
         oi = ObjectInfo(
             parent=b,
@@ -135,7 +177,8 @@ class PutObjectOperation(S3Operation):
             etag = '"%s"' % m.hexdigest(),
             size=len(contents),
             owner = self.requestor,
-            acl = acl)
+            acl = acl,
+            common_prefix = cp)
         
         
       

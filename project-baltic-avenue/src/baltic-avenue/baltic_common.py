@@ -10,6 +10,8 @@ import logging
 import re
 import random
 
+import pprint
+
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
 
@@ -28,6 +30,10 @@ class UTC(tzinfo):
 
     def dst(self, dt):
         return ZERO
+
+    def __repr__(self):
+        return 'UTC'
+    
 
 utc = UTC()
 
@@ -48,6 +54,48 @@ class S3Operation():
         self.response.headers['x-amz-request-id'] = self.request_id
         self.response.headers['x-amz-id-2'] = self.host_id
 
+        
+        
+    def go2(self,*args):
+        try:
+            self.go(args)
+        finally:
+            
+            return
+            from datetime import datetime
+        
+            bucket = args[0]
+        
+            b = Bucket.gql('WHERE name1 = :1',bucket).get()
+        
+            bucket_owner = b.owner.id if b else '???'
+            time = datetime.utcnow()   # time in which request was received
+            remote_ip = self.request.remote_addr
+            requestor = self.requestor
+            request_id = self.request_id
+            operation = 'REST.PUT.OBJECT'
+            key = args[1] if len(args) > 1 else None
+            request_uri= '%s %s' % (self.request.method, self.request.path_qs)
+            status = self.response._Response__status[0]     # response.status_code, response.status_int don't work!
+            error_code = 'NoSuchBucket'
+            bytes_sent = len(self.response.out.getvalue()) # out = StringIO
+            object_size = '???' #the total size of the object in question
+            total_time = 70  # millis
+            turnaround_time = 70  # last bytes of request to first byte of response
+            referrer = self.request.referrer
+            user_agent = self.request.user_agent
+            
+            data = {'bucket_owner':bucket_owner,'bucket':bucket,'time':time,'remote_ip':remote_ip,
+                    'requestor':requestor,'request_id':request_id,'operation':operation,'key':key,
+                    'request_uri':request_uri,'status':status,'error_code':error_code,
+                    'bytes_sent':bytes_sent,'object_size':object_size,'total_time':total_time,
+                    'turnaround_time':turnaround_time,'referrer':referrer,'user_agent':user_agent}
+        
+            s = '\n' + '\n'.join(map(lambda x:'%s:%s'%(x,data[x]),data))
+        
+            logging.info(s)
+            
+            
         
     # generates the aws canonical string for the given parameters
     def canonical_string(self, method, bucket="", key=None, query_args={}, headers={}, expires=None):
@@ -110,10 +158,20 @@ class S3Operation():
             buf += "%s" % bucket 
 
 
-
+        logging.info('self.request.path_qs %s' % self.request.path_qs)
+        
+        p = self.request.path.replace('%25','%')
+        logging.info('self.request.pathp %s' % p)
+        
+        logging.info('self.request.url %s' % self.request.url)
+        
+        logging.info('self.request.environ:\n%s', pprint.pformat(self.request.environ))
+        
+        logging.info('key %s' % key)
+        
         # add the key
         if key:
-            buf +=  '/' + key #urllib.quote_plus(key)
+            buf +=  '/' + (key if self.request.environ.get('HTTP_USER_AGENT') == 'gzip(gfe)' else url_encode(key))
         elif self.request.path.endswith('/') and len(self.request.path) > 1:
         #elif self.request.path != '/':
             buf +=  '/'
@@ -209,6 +267,7 @@ class S3Operation():
                 existing_oc.delete()
             existing_oi.acl.delete()
             existing_oi.delete()
+            return existing_oi
 
     def object_metadata_as_response_headers(self, object_info):
         self.response.headers['Content-Length'] = str(object_info.size)  # this doesn't seem to work for head requests
@@ -248,6 +307,10 @@ class S3Operation():
 
     # error responses
 
+    def error_entity_too_large(self,entity_size,max_size):
+        self.error_generic(400, 'EntityTooLarge', 'Your proposed upload exceeds the maximum allowed object size.',
+                           {'MaximumSize':max_size,'EntitySize':entity_size})
+        
     def error_invalid_signature(self, sig, aws_key, string_to_sign):
         self.error_generic(403,'SignatureDoesNotMatch','The request signature we calculated does not match the signature you provided. Check your key and signing method.',
                            {'SignatureProvided':sig,
