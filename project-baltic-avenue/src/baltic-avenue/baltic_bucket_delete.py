@@ -11,38 +11,40 @@ class DeleteBucketOperation(S3Operation):
     def go(self, bucket):
         logging.info('DELETE bucket [%s]' % bucket)
         
+        self.resource_type = 'BUCKET'
+        
         if not self.check_auth(bucket):
             return
         
-        b = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
         
         
         # bucket does not exist
-        if not b:
+        if not self.bucket:
             self.error_no_such_bucket(bucket)
             return
 
         # bucket is owned by someone else
-        if b.owner.id != self.requestor.id:
+        if self.bucket.owner.id != self.requestor.id:
             self.error_access_denied()
             return
         
         # check acl
-        if not self.check_permission(b.acl,'WRITE'): return
+        if not self.check_permission(self.bucket.acl,'WRITE'): return
         
         
         # make sure the bucket is empty
-        is_empty = ObjectInfo.gql("WHERE ANCESTOR IS :1 LIMIT 1",b).count() == 0
+        is_empty = ObjectInfo.gql("WHERE ANCESTOR IS :1 LIMIT 1",self.bucket).count() == 0
         if not is_empty:
             self.error_bucket_not_empty(bucket)
             return
         
         
         # delete it!
-        for cp in CommonPrefix.all().filter('bucket =',b):
+        for cp in CommonPrefix.all().filter('bucket =',self.bucket):
             cp.delete()
-        b.acl.delete()
-        b.delete()
+        self.bucket.acl.delete()
+        self.bucket.delete()
         
 
         

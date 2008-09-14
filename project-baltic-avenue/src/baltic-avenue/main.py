@@ -127,11 +127,7 @@ class MainPage(webapp.RequestHandler):
         logging.info(oi)
 
     def get(self):
-        
-        logging.info('get! [%s]' % os.environ.get("HTTP_AUTHORIZATION"))
-        
-        
-                
+                        
         # common to all responses
         self.response.charset = 'utf8'
         del self.response.headers['Cache-Control']
@@ -144,20 +140,20 @@ class MainPage(webapp.RequestHandler):
         
         # GET service
         if self.request.path == '/':
-            GetServiceOperation(self.request,self.response).go() 
+            GetServiceOperation(self.request,self.response).go_common() 
             return
         
         
         # GET bucket
         m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
-            GetBucketOperation(self.request,self.response).go(m[0]) 
+            GetBucketOperation(self.request,self.response).go_common(m[0]) 
             return
 
         # GET object
         m = parse_url_path(self.request.path)
         if m[0] and m[1]:
-            GetObjectOperation(self.request,self.response).go(m[0],m[1]) 
+            GetObjectOperation(self.request,self.response).go_common(m[0],m[1]) 
             return
 
 
@@ -178,13 +174,13 @@ class MainPage(webapp.RequestHandler):
         # PUT bucket
         m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
-            PutBucketOperation(self.request,self.response).go(m[0]) 
+            PutBucketOperation(self.request,self.response).go_common(m[0]) 
             return
             
         # PUT object
         m = parse_url_path(self.request.path)
         if m[0] and m[1]:
-            PutObjectOperation(self.request,self.response).go(m[0],m[1]) 
+            PutObjectOperation(self.request,self.response).go_common(m[0],m[1]) 
             return
  
             
@@ -203,13 +199,13 @@ class MainPage(webapp.RequestHandler):
         # DELETE bucket
         m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
-            DeleteBucketOperation(self.request,self.response).go(m[0]) 
+            DeleteBucketOperation(self.request,self.response).go_common(m[0]) 
             return
         
         # DELETE object
         m = parse_url_path(self.request.path)
         if m[0] and m[1]:
-            DeleteObjectOperation(self.request,self.response).go(m[0],m[1]) 
+            DeleteObjectOperation(self.request,self.response).go_common(m[0],m[1]) 
             return
             
         # unsupported
@@ -226,13 +222,13 @@ class MainPage(webapp.RequestHandler):
         # HEAD bucket
         m = parse_url_path(self.request.path)
         if m[0] and not m[1]:
-            HeadBucketOperation(self.request,self.response).go(m[0]) 
+            HeadBucketOperation(self.request,self.response).go_common(m[0]) 
             return
         
         # HEAD object
         m = parse_url_path(self.request.path)
         if m[0] and m[1]:
-            HeadObjectOperation(self.request,self.response).go(m[0],m[1]) 
+            HeadObjectOperation(self.request,self.response).go_common(m[0],m[1]) 
             return
     
 

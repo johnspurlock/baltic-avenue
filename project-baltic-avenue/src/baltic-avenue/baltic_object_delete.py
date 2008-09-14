@@ -11,31 +11,34 @@ class DeleteObjectOperation(S3Operation):
     def go(self, bucket, key):
         logging.info('DELETE bucket [%s] key [%s]' % (bucket,key))
         
+        self.resource_type = 'OBJECT'
+        
         if not self.check_auth(bucket,key):
             return
         
         
-        b = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.key = key
         
         # bucket does not exist
-        if not b:
+        if not self.bucket:
             self.error_no_such_bucket(bucket)
             return
         
         
         # bucket is owned by someone else
-        if b.owner.id != self.requestor.id:
+        if self.bucket.owner.id != self.requestor.id:
             self.error_access_denied()
             return
         
         # check acl
-        if not self.check_permission(b.acl,'WRITE'): return
+        if not self.check_permission(self.bucket.acl,'WRITE'): return
         
         # unencode the key
         key = url_unencode(key)
         
         # delete existing object (if exists)
-        existing_oi = self.delete_object_if_exists(b,key)
+        existing_oi = self.delete_object_if_exists(self.bucket,key)
         
         # delete common prefixes if necessary
         def delete_common_prefix_if_empty(cp):

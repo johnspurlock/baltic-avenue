@@ -54,6 +54,11 @@ class S3Operation():
         
         self.response.headers['x-amz-request-id'] = self.request_id
         self.response.headers['x-amz-id-2'] = self.host_id
+        
+        self.bucket = None
+        self.key = None
+        self.resource_type = None
+        self.error_code = None
 
 
         self._all_users = None
@@ -67,44 +72,74 @@ class S3Operation():
      
     
         
-    def go2(self,*args):
+    def go_common(self,*args):
+        
+   
+        import time
+        
+        start = time.time()
+        #start2 = time.clock()
+        
         try:
-            self.go(args)
+            self.go(*args)
         finally:
             
-            return
+            
+            end = time.time()
+            #end2 = time.clock()
+            
+            
+            #logging.debug('1 %s %s %s %s %s' % (end,start,end-start,(end - start) * 1000.0,long((end - start) * 1000.0)))
+            #logging.debug('2 %s %s %s %s %s' % (end2,start2,end2-start2,(end2 - start2) * 1000.0,long((end2 - start2) * 1000.0)))
+            processing_time_millis =  long((end - start) * 1000.0)  # time() is more accurate than clock() on appspot
+            
             from datetime import datetime
         
-            bucket = args[0]
-        
-            b = Bucket.gql('WHERE name1 = :1',bucket).get()
-        
-            bucket_owner = b.owner.id if b else '???'
-            time = datetime.utcnow()   # time in which request was received
+            bucket = self.bucket.name1 if self.bucket else (args[0] if len(args) > 0 else None)
+            bucket_owner = self.bucket.owner.id if self.bucket else None
+            time = datetime.utcnow()   #.strftime('[%d/%B/%Y:%H:%M:%S %z]')   # time in which request was received
             remote_ip = self.request.remote_addr
-            requestor = self.requestor
+            requestor = self.requestor.id
             request_id = self.request_id
-            operation = 'REST.PUT.OBJECT'
-            key = args[1] if len(args) > 1 else None
+            operation = 'REST.%s.%s' % (self.request.method,self.resource_type)
+            key = self.key if self.key else (args[1] if len(args) > 1 else None)
             request_uri= '%s %s' % (self.request.method, self.request.path_qs)
-            status = self.response._Response__status[0]     # response.status_code, response.status_int don't work!
-            error_code = 'NoSuchBucket'
-            bytes_sent = len(self.response.out.getvalue()) # out = StringIO
-            object_size = '???' #the total size of the object in question
-            total_time = 70  # millis
-            turnaround_time = 70  # last bytes of request to first byte of response
+            http_status = self.response._Response__status[0]     # response.status_code, response.status_int don't work!
+            error_code = self.error_code
+            bytes_sent = len(self.response.out.getvalue()) if self.request.method in ['GET','HEAD'] else len(self.request.body) # out = StringIO
+            object_size = 0  #TODO the total size of the object in question
+            total_time_millis = processing_time_millis  # The number of milliseconds the request was in flight from the server's perspective. This value is measured from the time your request is received to the time that the last byte of the response is sent. Measurements made from the client's perspective may be longer due to network latency. 
+            turnaround_time_millis = processing_time_millis  # The number of milliseconds that Amazon S3 spent processing your request. This value is measured from the time the last byte of your request was received until the time the first byte of the response was sent.
             referrer = self.request.referrer
             user_agent = self.request.user_agent
             
             data = {'bucket_owner':bucket_owner,'bucket':bucket,'time':time,'remote_ip':remote_ip,
                     'requestor':requestor,'request_id':request_id,'operation':operation,'key':key,
-                    'request_uri':request_uri,'status':status,'error_code':error_code,
-                    'bytes_sent':bytes_sent,'object_size':object_size,'total_time':total_time,
-                    'turnaround_time':turnaround_time,'referrer':referrer,'user_agent':user_agent}
+                    'request_uri':request_uri,'http_status':http_status,'error_code':error_code,
+                    'bytes_sent':bytes_sent,'object_size':object_size,'total_time_millis':total_time_millis,
+                    'turnaround_time_millis':turnaround_time_millis,'referrer':referrer,'user_agent':user_agent}
         
-            s = '\n' + '\n'.join(map(lambda x:'%s:%s'%(x,data[x]),data))
-        
-            logging.info(s)
+            logging.debug('LOG RECORD:\n' + '\n'.join(map(lambda x:'%s:%s'%(x,data[x]),data)))
+            
+            log_record = LogRecord(
+                bucket_owner = bucket_owner,
+                bucket = bucket,
+                time = time,
+                remote_ip = remote_ip,
+                requestor = requestor,
+                request_id = request_id,
+                operation =operation,
+                keyname = key,
+                request_uri = request_uri,
+                http_status = http_status,
+                error_code = error_code,
+                bytes_sent = bytes_sent,
+                object_size = object_size,
+                total_time_millis = total_time_millis,
+                turnaround_time_millis = turnaround_time_millis,
+                referrer =referrer,
+                user_agent = user_agent)
+            log_record.put()
        
        
     def write_acl(self, acl):
@@ -258,7 +293,7 @@ class S3Operation():
 
     def check_auth(self, bucket='', key=None, query_args = {}):
         
-        logging.info('check_auth [%s]' % os.environ.get("HTTP_AUTHORIZATION"))
+        #logging.info('check_auth [%s]' % os.environ.get("HTTP_AUTHORIZATION"))
         
         # check auth header present
         client_auth = os.environ.get("HTTP_AUTHORIZATION")
@@ -266,8 +301,6 @@ class S3Operation():
             # if no auth header provided, this is a public request
             self.requestor = self.all_users
             return True
-        
-        logging.info('client_auth [%s]' % client_auth)
         
         m = re.match('^AWS ([^:]+):([^:]+)$',client_auth)
         if not m:
@@ -358,6 +391,10 @@ class S3Operation():
 
 
 
+
+
+
+
     # error responses
 
     def error_entity_too_large(self,entity_size,max_size):
@@ -407,6 +444,7 @@ class S3Operation():
 
     def error_generic(self, status, code, message, fields={}):
         self.response.set_status(status)
+        self.error_code = code
         self.response.headers['Content-Type'] = 'application/xml'
         self.response.out.write( u'<?xml version="1.0" encoding="UTF-8"?>\n<Error>')
         self.response.out.write( u'<Code>%s</Code>' % code)

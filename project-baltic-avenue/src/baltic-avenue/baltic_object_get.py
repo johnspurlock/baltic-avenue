@@ -11,13 +11,16 @@ class GetObjectOperation(S3Operation):
     def go(self, bucket, key):
         logging.info('GET bucket [%s] key [%s] query-params [%s]' % (bucket,key,self.request.params))
         
+        self.resource_type = 'OBJECT'
+        
         if not self.check_auth(bucket,key,query_args=self.request.params):
             return
         
-        b = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.key = key
         
         # bucket does not exist
-        if not b:
+        if not self.bucket:
             self.error_no_such_bucket(bucket)
             return
         
@@ -26,7 +29,7 @@ class GetObjectOperation(S3Operation):
         key = url_unencode(key)
         
         
-        existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()
+        existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(self.bucket),key).get()
         if not existing_oi:
             self.error_no_such_key(key)
             return
@@ -40,7 +43,8 @@ class GetObjectOperation(S3Operation):
         # acl
         object_acl = existing_oi.acl
         if self.request.params.has_key('acl'):   
-               
+            self.resource_type = 'ACL'
+            
             # check acl
             if not self.check_permission(object_acl,'READ_ACP'): return
 

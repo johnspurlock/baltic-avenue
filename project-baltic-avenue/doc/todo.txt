@@ -3,7 +3,6 @@
 remaining features
 -------------------
 admin page: run the principal import once on startup (how?)
-bucket access logging (simple)
 better logging
 ----
 support authenticated-read canned-access policy and auth-users group
@@ -23,6 +22,7 @@ performance tweaks - imports and memcache
 location constraints?
 bucket access logging? (full)
 (move this list to google code site?)
+object-size in log-record
 
 
 

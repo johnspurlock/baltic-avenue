@@ -10,6 +10,8 @@ class GetServiceOperation(S3Operation):
     def go(self):
         logging.info('GET service')
         
+        self.resource_type = 'SERVICE'
+        
         if not self.check_auth():
             return
         

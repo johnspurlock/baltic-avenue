@@ -57,15 +57,15 @@ class ObjectContents(db.Model):
     contents = db.BlobProperty()  # not required to support zero-byte files
 
 class LogRecord(db.Model):
-    bucket_owner = db.StringProperty(required=True) #principal.id
-    bucket = db.StringProperty(required=True)  #bucket.name
+    bucket_owner = db.StringProperty() #principal.id
+    bucket = db.StringProperty()  #bucket.name
     time = db.DateTimeProperty(required=True)
     remote_ip = db.StringProperty(required=True)
     requestor = db.StringProperty(required=True)  #principal.id
     request_id = db.StringProperty(required=True)
     operation = db.StringProperty(required=True) #choices??
-    key_ = db.StringProperty(name="key")   #key.name
-    request_uri = db.StringProperty(required=True) # GET /asdf?asdf HTTP 1.1
+    keyname = db.TextProperty()   #key.name
+    request_uri = db.TextProperty(required=True) # GET /asdf?asdf HTTP 1.1
     http_status = db.IntegerProperty(required=True)
     error_code = db.StringProperty()
     bytes_sent = db.IntegerProperty(required=True)

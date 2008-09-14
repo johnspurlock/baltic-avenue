@@ -14,16 +14,17 @@ class HeadObjectOperation(S3Operation):
     def go(self, bucket, key):
         logging.info('HEAD bucket [%s] key [%s]' % (bucket, key))
         
-      
+        self.resource_type = 'OBJECT'
+        
         if not self.check_auth(bucket,key):
             return
         
         
-        b = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
-        
+        self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.key = key
         
         # bucket does not exist
-        if not b:
+        if not self.bucket:
             self.response.set_status(404)
             return
         
@@ -32,7 +33,7 @@ class HeadObjectOperation(S3Operation):
         # unencode the key
         key = url_unencode(key)
         
-        existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()
+        existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(self.bucket),key).get()
         if not existing_oi:
             self.response.set_status(404)
             return

@@ -14,16 +14,17 @@ class GetBucketOperation(S3Operation):
     def go(self, bucket):
         logging.info('GET bucket [%s] (list bucket) query string [%s]' % (bucket, self.request.params))
         
+        self.resource_type = 'BUCKET'
         
         if not self.check_auth(bucket=bucket,query_args=self.request.params):
             return
         
         
-        b = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
         
         
         # bucket does not exist
-        if not b:
+        if not self.bucket:
             self.error_no_such_bucket(bucket)
             return
         
@@ -36,8 +37,9 @@ class GetBucketOperation(S3Operation):
         self.response.headers['Content-Type'] = 'application/xml'
         
         # return acl
+        bucket_acl = self.bucket.acl
         if self.request.params.has_key('acl'):
-            bucket_acl = b.acl
+            self.resource_type = 'ACL'
             
             # assert READ_ACP
             if not self.check_permission(bucket_acl,'READ_ACP'): return
@@ -46,16 +48,18 @@ class GetBucketOperation(S3Operation):
         
     
         # assert READ
-        if not self.check_permission(b.acl,'READ'): return
+        if not self.check_permission(bucket_acl,'READ'): return
             
 
         # location constraint
         if self.request.params.has_key('location'):
+            self.resource_type = 'LOCATION'
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/"/>')
             return
         
         # logging info
         if self.request.params.has_key('logging'):
+            self.resource_type = 'LOGGING_STATUS'
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n\n<BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n<!--<LoggingEnabled><TargetBucket>myLogsBucket</TargetBucket><TargetPrefix>add/this/prefix/to/my/log/files/access_log-</TargetPrefix></LoggingEnabled>-->\n</BucketLoggingStatus>')
             return
         
@@ -91,11 +95,11 @@ class GetBucketOperation(S3Operation):
         cps = []
         if max_keys > 0:
             # return ordered by key name
-            q = ObjectInfo.all().ancestor(b).order('name1').order('name2').order('name3') 
+            q = ObjectInfo.all().ancestor(self.bucket).order('name1').order('name2').order('name3') 
             
             # NEW WAY filter on parent cp
             parent_cp_full_name = compute_common_prefix(prefix)
-            q2 = CommonPrefix.all().filter('bucket =',b)
+            q2 = CommonPrefix.all().filter('bucket =',self.bucket)
             self.add_key_query_filters(q2,parent_cp_full_name)
             parent_cp = q2.get()
             

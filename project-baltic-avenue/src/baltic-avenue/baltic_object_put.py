@@ -15,22 +15,25 @@ class PutObjectOperation(S3Operation):
     def go(self, bucket, key):
         logging.info('PUT bucket [%s] key [%s]' % (bucket,key))
         
+        self.resource_type = 'OBJECT'
+        
         if not self.check_auth(bucket,key,query_args=self.request.params):
             return
         
         
         
-        b = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.key = key
         
         # bucket does not exist
-        if not b:
+        if not self.bucket:
             self.error_no_such_bucket(bucket)
             return
         
         # put acl
         if self.request.params.has_key('acl'):
-            
-            existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(b),key).get()
+            self.resource_type = 'ACL'
+            existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(self.bucket),key).get()
             
             object_acl = existing_oi.acl
             
@@ -51,7 +54,7 @@ class PutObjectOperation(S3Operation):
         
         
         # check acl
-        if not self.check_permission(b.acl,'WRITE'): return
+        if not self.check_permission(self.bucket.acl,'WRITE'): return
         
         # unencode the key
         key = url_unencode(key)
@@ -105,7 +108,7 @@ class PutObjectOperation(S3Operation):
           
         
         # delete existing object (if exists)
-        old_oi = self.delete_object_if_exists(b,key)
+        old_oi = self.delete_object_if_exists(self.bucket,key)
         
         # construct and save acl
         acl = ACL(owner=self.requestor)
@@ -127,14 +130,14 @@ class PutObjectOperation(S3Operation):
         if not cp:
             def ensure_exists(full_name):
                 q = CommonPrefix.all()
-                q = q.filter('bucket = ',b)
+                q = q.filter('bucket = ',self.bucket)
                 q =  self.add_key_query_filters(q,full_name)
                 existing_cp = q.get()
                 if existing_cp:
                     return existing_cp
                 
                 if full_name == '':
-                    new_cp = CommonPrefix(bucket=b,name1='',name2='',name3='')
+                    new_cp = CommonPrefix(bucket=self.bucket,name1='',name2='',name3='')
                     new_cp.put()
                     logging.info('put [%s]' % new_cp.full_name())
                     return new_cp
@@ -143,7 +146,7 @@ class PutObjectOperation(S3Operation):
                 parent_cp = ensure_exists(parent_full_name)
                 
                 new_cp = CommonPrefix(
-                    bucket=b, 
+                    bucket=self.bucket, 
                     common_prefix=parent_cp,
                     name1=full_name[0:500],
                     name2=full_name[500:1000],
@@ -158,8 +161,8 @@ class PutObjectOperation(S3Operation):
 
         # construct and save object-info
         oi = ObjectInfo(
-            parent=b,
-            bucket=b,
+            parent=self.bucket,
+            bucket=self.bucket,
             name1=key[0:500],
             name2=key[500:1000],
             name3=key[1000:1500],
