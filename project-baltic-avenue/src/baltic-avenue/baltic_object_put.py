@@ -9,6 +9,8 @@ import base64
 class PutObjectOperation(S3Operation):
     
 
+
+
     
     def go(self, bucket, key):
         logging.info('PUT bucket [%s] key [%s]' % (bucket,key))
@@ -25,13 +27,6 @@ class PutObjectOperation(S3Operation):
             self.error_no_such_bucket(bucket)
             return
         
-        
-        # bucket is owned by someone else
-        if b.owner.id != self.requestor.id:
-            self.error_access_denied()
-            return
-        
-        
         # put acl
         if self.request.params.has_key('acl'):
             
@@ -42,19 +37,10 @@ class PutObjectOperation(S3Operation):
             # check acl
             if not self.check_permission(object_acl,'WRITE_ACP'): return
                 
-            client_acl = parse_acl(self.request.body) 
-            
-            acl = ACL(owner=self.requestor)
-            acl.put()
-            
-            for client_grant in client_acl.grants:
-                principal = UserPrincipal.gql("WHERE id = :1",client_grant.grantee.id).get()
-                grant = ACLGrant(acl=acl,permission=client_grant.permission,grantee=principal)
-                grant.put()
+            acl = self.read_acl()
             
             existing_oi.acl = acl
             existing_oi.put()
-            
             
             self.response.set_status(200)
             return
@@ -126,11 +112,15 @@ class PutObjectOperation(S3Operation):
         acl.put()
         
         canned_access_policy = canned_access_policy or 'private'
-        if canned_access_policy == 'private':
+        if canned_access_policy in ['private','public-read','public-read-write']:
             grant = ACLGrant(acl=acl,grantee=self.requestor,permission='FULL_CONTROL')
             grant.put()
-        
-        
+        if canned_access_policy in ['public-read','public-read-write']:
+            grant = ACLGrant(acl=acl,grantee=self.all_users,permission='READ')
+            grant.put()
+        if canned_access_policy in ['public-read-write']:
+            grant = ACLGrant(acl=acl,grantee=self.all_users,permission='WRITE')
+            grant.put()
         
         # locate or create common prefix
         cp = old_oi.common_prefix if old_oi else None

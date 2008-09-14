@@ -2,11 +2,11 @@
 
 remaining features
 -------------------
-acl (groups) / anonymous access
 admin page: run the principal import once on startup (how?)
 bucket access logging (simple)
 better logging
 ----
+support authenticated-read canned-access policy and auth-users group
 test with jets3t
 test with s3sync
 not implemented errors

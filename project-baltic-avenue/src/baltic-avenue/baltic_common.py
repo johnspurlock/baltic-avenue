@@ -11,6 +11,7 @@ import re
 import random
 
 import pprint
+import os
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)
@@ -54,7 +55,17 @@ class S3Operation():
         self.response.headers['x-amz-request-id'] = self.request_id
         self.response.headers['x-amz-id-2'] = self.host_id
 
-        
+
+        self._all_users = None
+    def get_all_users(self):
+        if not self._all_users:
+            self._all_users = GroupPrincipal.all().filter('uri =','http://acs.amazonaws.com/groups/global/AllUsers').get()
+            logging.debug('loaded self._all_users')
+        return  self._all_users
+
+    all_users = property(get_all_users)
+     
+    
         
     def go2(self,*args):
         try:
@@ -94,9 +105,46 @@ class S3Operation():
             s = '\n' + '\n'.join(map(lambda x:'%s:%s'%(x,data[x]),data))
         
             logging.info(s)
-            
-            
+       
+       
+    def write_acl(self, acl):
+        self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner>')
+        self.response.out.write(u'<ID>%s</ID>' % acl.owner.id)
+        self.response.out.write(u'<DisplayName>%s</DisplayName>' % acl.owner.display_name)
+        self.response.out.write(u'</Owner><AccessControlList>')
         
+        for grant in acl.grants:
+            type = 'Group' if isinstance(grant,GroupPrincipal) else 'CanonicalUser'
+            
+            self.response.out.write(u'<Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="%s">'% type)
+            self.response.out.write(u'<ID>%s</ID>' % grant.grantee.id)
+            self.response.out.write(u'<DisplayName>%s</DisplayName>' % grant.grantee.display_name)
+            if type == 'Group':
+                self.response.out.write(u'<URI>%s</URI>' % grant.grantee.uri)
+            self.response.out.write(u'</Grantee><Permission>%s</Permission></Grant>' % grant.permission)
+            
+        self.response.out.write(u'</AccessControlList></AccessControlPolicy>')
+  
+            
+    def read_acl(self):
+        client_acl = parse_acl(self.request.body) 
+        
+        acl = ACL(owner=self.requestor)
+        acl.put()
+        
+        for client_grant in client_acl.distinct_grants():
+            principal = None
+            if client_grant.grantee.type == 'Group':
+                principal = GroupPrincipal.all().filter('uri =',client_grant.grantee.uri).get()
+                logging.debug('found group-principal [%s] from uri = [%s]'%(principal,client_grant.grantee.uri))
+            else:                    
+                principal = UserPrincipal.all().filter("id =",client_grant.grantee.id).get()
+                logging.debug('found user-principal [%s] from id = [%s]'%(principal,client_grant.grantee.id))
+           
+            grant = ACLGrant(acl=acl,permission=client_grant.permission,grantee=principal)
+            grant.put()
+        return acl
+    
     # generates the aws canonical string for the given parameters
     def canonical_string(self, method, bucket="", key=None, query_args={}, headers={}, expires=None):
         
@@ -210,11 +258,16 @@ class S3Operation():
 
     def check_auth(self, bucket='', key=None, query_args = {}):
         
+        logging.info('check_auth [%s]' % os.environ.get("HTTP_AUTHORIZATION"))
+        
         # check auth header present
-        client_auth = self.request.headers.get('Authorization')
+        client_auth = os.environ.get("HTTP_AUTHORIZATION")
         if not client_auth:
-            self.error_generic(400,'NoAuthHeader','Expecting an Authorization header')
-            return False
+            # if no auth header provided, this is a public request
+            self.requestor = self.all_users
+            return True
+        
+        logging.info('client_auth [%s]' % client_auth)
         
         m = re.match('^AWS ([^:]+):([^:]+)$',client_auth)
         if not m:

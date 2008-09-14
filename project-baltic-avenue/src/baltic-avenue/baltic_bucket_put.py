@@ -21,19 +21,10 @@ class PutBucketOperation(S3Operation):
             # check acl
             if not self.check_permission(b.acl,'WRITE_ACP'): return
                 
-            client_acl = parse_acl(self.request.body) 
-            
-            acl = ACL(owner=self.requestor)
-            acl.put()
-            
-            for client_grant in client_acl.grants:
-                principal = UserPrincipal.gql("WHERE id = :1",client_grant.grantee.id).get()
-                grant = ACLGrant(acl=acl,permission=client_grant.permission,grantee=principal)
-                grant.put()
+            acl = self.read_acl()
             
             b.acl = acl
             b.put()
-            
             
             self.response.set_status(200)
             return

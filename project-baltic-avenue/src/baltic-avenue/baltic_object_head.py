@@ -28,11 +28,7 @@ class HeadObjectOperation(S3Operation):
             return
         
         
-        # bucket is owned by someone else
-        if b.owner.id != self.requestor.id:
-            self.response.set_status(403)
-            return
-        
+
         # unencode the key
         key = url_unencode(key)
         

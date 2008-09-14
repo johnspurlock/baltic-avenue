@@ -57,33 +57,65 @@ def parse_acl(acl_xml):
             if n.namespaceURI == xmlns and n.localName == elementName:
                 yield n
     
-    class C(object):
+    class ClientACL(object):
+        def distinct_grants(self):
+            for grant in self.grants:
+                if grant.grantee.type == 'Group':
+                    if len([g for g in self.grants if g != grant and g.grantee.type == 'Group' and g.grantee.uri == grant.uri and g.permission == 'FULL_CONTROL'  ]) ==0:
+                        yield grant
+                if grant.grantee.type == 'CanonicalUser':
+                    if len([g for g in self.grants if g != grant and g.grantee.type == 'CanonicalUser' and g.grantee.id == grant.id and g.permission == 'FULL_CONTROL'  ]) ==0:
+                        yield grant
+    
+    class DynamicObject(object):
         pass
     
-    rt = C()
+    class Error(Exception):
+        pass
     
-    acp = find_one(dom,'AccessControlPolicy')
+    class BalticError(Error):
+        def __init__(self, message):
+            self.message = message
     
-   
-    rt.owner = C()
-    owner = find_one(acp,'Owner')
-    rt.owner.id = find_one(owner,'ID').childNodes[0].data
-    rt.owner.display_name = find_one(owner,'DisplayName').childNodes[0].data
+    rt = ClientACL()
+    
+    acp_node = find_one(dom,'AccessControlPolicy')
+    
+ #   xsi:type="CanonicalUser">
+    rt.owner = DynamicObject()
+    owner_node = find_one(acp_node,'Owner')
+    rt.owner.id = find_one(owner_node,'ID').childNodes[0].data
+    rt.owner.display_name = find_one(owner_node,'DisplayName').childNodes[0].data
     rt.grants = []
     
-    acl = find_one(acp,'AccessControlList')
+    acl_node = find_one(acp_node,'AccessControlList')
     
-    for grant_node in find_all(acl,'Grant'):
+    for grant_node in find_all(acl_node,'Grant'):
     
-        grant = C()
-        grant.grantee = C()
-        grantee = find_one(grant_node,'Grantee')
-        grant.grantee.id = find_one(grantee,'ID').childNodes[0].data
-        display_name_node = find_one(grantee,'DisplayName')
+        grant = DynamicObject()
+        grant.grantee = DynamicObject()
+        grantee_node = find_one(grant_node,'Grantee')
+        
+        grant.grantee.type = grantee_node.getAttributeNS('http://www.w3.org/2001/XMLSchema-instance','type')
+        if not grant.grantee.type in ['CanonicalUser','Group']:
+            raise BalticError('Unsupported grantee type [%s]' % grant.grantee.type)
+        
+        id_node = find_one(grantee_node,'ID')
+        if id_node:
+            grant.grantee.id = id_node.childNodes[0].data
+            
+        display_name_node = find_one(grantee_node,'DisplayName')
         if display_name_node:
             grant.grantee.display_name = display_name_node.childNodes[0].data
-        grant.permission = find_one(grant_node,'Permission').childNodes[0].data      
+            
+        grant.permission = find_one(grant_node,'Permission').childNodes[0].data   
+        
+        
+        if grant.grantee.type == 'Group':
+            grant.grantee.uri = find_one(grantee_node,'URI').childNodes[0].data
+        
         rt.grants.append(grant)
+     
      
     
     return rt

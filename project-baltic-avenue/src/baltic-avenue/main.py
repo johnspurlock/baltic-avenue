@@ -128,8 +128,10 @@ class MainPage(webapp.RequestHandler):
 
     def get(self):
         
-
-            
+        logging.info('get! [%s]' % os.environ.get("HTTP_AUTHORIZATION"))
+        
+        
+                
         # common to all responses
         self.response.charset = 'utf8'
         del self.response.headers['Cache-Control']
