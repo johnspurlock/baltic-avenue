@@ -38,7 +38,8 @@ def compute_common_prefix(key):
     i = key.rfind('/')
     return '' if i==-1 else key[:i+1]
     
-    
+def is_development_server_request(request):
+    return request.environ.get('SERVER_SOFTWARE') == 'Development/1.0'
 
 def parse_acl(acl_xml):
     
@@ -81,7 +82,6 @@ def parse_acl(acl_xml):
     
     acp_node = find_one(dom,'AccessControlPolicy')
     
- #   xsi:type="CanonicalUser">
     rt.owner = DynamicObject()
     owner_node = find_one(acp_node,'Owner')
     rt.owner.id = find_one(owner_node,'ID').childNodes[0].data

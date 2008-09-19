@@ -16,7 +16,7 @@ class GetObjectOperation(S3Operation):
         if not self.check_auth(bucket,key,query_args=self.request.params):
             return
         
-        self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
+        self.bucket = Bucket.gql("WHERE name1 = :1 ", bucket).get()
         self.key = key
         
         # bucket does not exist
@@ -28,7 +28,7 @@ class GetObjectOperation(S3Operation):
         # unencode the key
         key = url_unencode(key)
         
-        
+        # get the object-info
         existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(self.bucket),key).get()
         if not existing_oi:
             self.error_no_such_key(key)
@@ -45,7 +45,7 @@ class GetObjectOperation(S3Operation):
         if self.request.params.has_key('acl'):   
             self.resource_type = 'ACL'
             
-            # check acl
+            # assert READ_ACP
             if not self.check_permission(object_acl,'READ_ACP'): return
 
             self.write_acl(object_acl)
@@ -53,11 +53,11 @@ class GetObjectOperation(S3Operation):
             
             
             
-        # check acl
+        # assert READ
         if not self.check_permission(object_acl,'READ'): return
         
         
-        # load contents
+        # get the object-contents
         existing_oc = ObjectContents.gql("WHERE ANCESTOR IS :1 LIMIT 1", existing_oi).get()
         
         
@@ -66,6 +66,3 @@ class GetObjectOperation(S3Operation):
         self.response.out.write(existing_oc.contents)
         
         
-        
-        
-    

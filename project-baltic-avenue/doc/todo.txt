@@ -2,12 +2,12 @@
 
 remaining features
 -------------------
-admin page: run the principal import once on startup (how?)
 better logging
 ----
 support authenticated-read canned-access policy and auth-users group
 test with jets3t
 test with s3sync
+test with boto
 not implemented errors
 wrap backend errors into 500 errors
 query string auth

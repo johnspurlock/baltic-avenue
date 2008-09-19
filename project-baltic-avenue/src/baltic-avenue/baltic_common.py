@@ -62,6 +62,8 @@ class S3Operation():
 
 
         self._all_users = None
+        
+        
     def get_all_users(self):
         if not self._all_users:
             self._all_users = GroupPrincipal.all().filter('uri =','http://acs.amazonaws.com/groups/global/AllUsers').get()
@@ -74,7 +76,6 @@ class S3Operation():
         
     def go_common(self,*args):
         
-   
         import time
         
         start = time.time()
@@ -83,23 +84,19 @@ class S3Operation():
         try:
             self.go(*args)
         finally:
-            
-            
             end = time.time()
             #end2 = time.clock()
-            
             
             #logging.debug('1 %s %s %s %s %s' % (end,start,end-start,(end - start) * 1000.0,long((end - start) * 1000.0)))
             #logging.debug('2 %s %s %s %s %s' % (end2,start2,end2-start2,(end2 - start2) * 1000.0,long((end2 - start2) * 1000.0)))
             processing_time_millis =  long((end - start) * 1000.0)  # time() is more accurate than clock() on appspot
-            
-            from datetime import datetime
+        
         
             bucket = self.bucket.name1 if self.bucket else (args[0] if len(args) > 0 else None)
             bucket_owner = self.bucket.owner.id if self.bucket else None
             time = datetime.utcnow()   #.strftime('[%d/%B/%Y:%H:%M:%S %z]')   # time in which request was received
             remote_ip = self.request.remote_addr
-            requestor = self.requestor.id
+            requestor = self.requestor.id if self.requestor else '???'
             request_id = self.request_id
             operation = 'REST.%s.%s' % (self.request.method,self.resource_type)
             key = self.key if self.key else (args[1] if len(args) > 1 else None)
@@ -372,7 +369,7 @@ class S3Operation():
 
 
     def is_development_server(self):
-        return self.request.environ.get('SERVER_SOFTWARE') == 'Development/1.0'
+        return is_development_server_request(self.request)
 
 
     def check_permission(self, acl, permission):

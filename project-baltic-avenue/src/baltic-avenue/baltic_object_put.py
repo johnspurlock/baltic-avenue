@@ -100,12 +100,14 @@ class PutObjectOperation(S3Operation):
             
     
     
-    
-    
-    
         # ok, everything checks out
         self.response.set_status(200)
           
+        # compute the etag and set the response header
+        # ETag:"2616fc79b0821b63701ead59cb3eae1d"
+        etag = '"%s"' % m.hexdigest()
+        self.response.headers['ETag'] = etag
+        logging.debug('ETag:  %s' % etag)
         
         # delete existing object (if exists)
         old_oi = self.delete_object_if_exists(self.bucket,key)
@@ -167,7 +169,7 @@ class PutObjectOperation(S3Operation):
             name2=key[500:1000],
             name3=key[1000:1500],
             last_modified=datetime.utcnow().replace(tzinfo=utc),
-            etag = '"%s"' % m.hexdigest(),
+            etag = etag,
             size=len(contents),
             owner = self.requestor,
             acl = acl,
@@ -194,5 +196,8 @@ class PutObjectOperation(S3Operation):
             contents=contents)
         oc.put()
         
+        
+
+    
         
     
