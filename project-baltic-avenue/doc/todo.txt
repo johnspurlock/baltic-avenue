@@ -2,8 +2,6 @@
 
 remaining features
 -------------------
-better logging
-----
 support authenticated-read canned-access policy and auth-users group
 test with jets3t
 test with s3sync
@@ -23,6 +21,7 @@ location constraints?
 bucket access logging? (full)
 (move this list to google code site?)
 object-size in log-record
+better logging
 
 
 

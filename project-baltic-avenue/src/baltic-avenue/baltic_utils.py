@@ -1,5 +1,4 @@
 import re
-
 from xml.sax import saxutils
 
 
@@ -68,7 +67,7 @@ def parse_acl(acl_xml):
                     if len([g for g in self.grants if g != grant and g.grantee.type == 'CanonicalUser' and g.grantee.id == grant.id and g.permission == 'FULL_CONTROL'  ]) ==0:
                         yield grant
     
-    class DynamicObject(object):
+    class DynamicObject(object):    # surely there must be a better way to do this
         pass
     
     class Error(Exception):

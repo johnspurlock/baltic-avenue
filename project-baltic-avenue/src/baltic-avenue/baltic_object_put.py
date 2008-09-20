@@ -8,10 +8,6 @@ import base64
 
 class PutObjectOperation(S3Operation):
     
-
-
-
-    
     def go(self, bucket, key):
         logging.info('PUT bucket [%s] key [%s]' % (bucket,key))
         
@@ -21,7 +17,7 @@ class PutObjectOperation(S3Operation):
             return
         
         
-        
+        # locate bucket
         self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
         self.key = key
         
@@ -33,15 +29,16 @@ class PutObjectOperation(S3Operation):
         # put acl
         if self.request.params.has_key('acl'):
             self.resource_type = 'ACL'
-            existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(self.bucket),key).get()
             
+            # locate object-info
+            existing_oi = self.add_key_query_filters(ObjectInfo.all().ancestor(self.bucket),key).get()
             object_acl = existing_oi.acl
             
-            # check acl
+            # assert WRITE_ACP
             if not self.check_permission(object_acl,'WRITE_ACP'): return
                 
+            # parse acl and associate with object
             acl = self.read_acl()
-            
             existing_oi.acl = acl
             existing_oi.put()
             
@@ -53,7 +50,7 @@ class PutObjectOperation(S3Operation):
         
         
         
-        # check acl
+        # assert WRITE
         if not self.check_permission(self.bucket.acl,'WRITE'): return
         
         # unencode the key
@@ -115,7 +112,6 @@ class PutObjectOperation(S3Operation):
         # construct and save acl
         acl = ACL(owner=self.requestor)
         acl.put()
-        
         canned_access_policy = canned_access_policy or 'private'
         if canned_access_policy in ['private','public-read','public-read-write']:
             grant = ACLGrant(acl=acl,grantee=self.requestor,permission='FULL_CONTROL')
@@ -141,7 +137,7 @@ class PutObjectOperation(S3Operation):
                 if full_name == '':
                     new_cp = CommonPrefix(bucket=self.bucket,name1='',name2='',name3='')
                     new_cp.put()
-                    logging.info('put [%s]' % new_cp.full_name())
+                    logging.debug('put cp [%s]' % new_cp.full_name())
                     return new_cp
                 
                 parent_full_name = compute_common_prefix(full_name[:-1])
@@ -154,7 +150,7 @@ class PutObjectOperation(S3Operation):
                     name2=full_name[500:1000],
                     name3=full_name[1000:1500])
                 new_cp.put()
-                logging.info('put [%s]' % new_cp.full_name())
+                logging.debug('put cp [%s]' % new_cp.full_name())
                 return new_cp
                 
             cp_full_name = compute_common_prefix(key)
@@ -176,7 +172,6 @@ class PutObjectOperation(S3Operation):
             common_prefix = cp)
         
         
-      
         #logging.info('\n' + '\n'.join(['%s: %s' % (h,self.request.headers[h]) for h in self.request.headers]))
         
         # save optional metadata as expando properties
@@ -189,6 +184,8 @@ class PutObjectOperation(S3Operation):
 
         oi.put()
         
+        
+        
         # save object contents
         oc = ObjectContents(
             parent=oi,
@@ -196,8 +193,5 @@ class PutObjectOperation(S3Operation):
             contents=contents)
         oc.put()
         
-        
-
-    
         
     

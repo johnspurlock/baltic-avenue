@@ -60,7 +60,6 @@ class S3Operation():
         self.resource_type = None
         self.error_code = None
 
-
         self._all_users = None
         
         
@@ -79,7 +78,7 @@ class S3Operation():
         import time
         
         start = time.time()
-        #start2 = time.clock()
+        #start2 = time.clock()   # time() is more accurate than clock() on appspot
         
         try:
             self.go(*args)
@@ -89,7 +88,7 @@ class S3Operation():
             
             #logging.debug('1 %s %s %s %s %s' % (end,start,end-start,(end - start) * 1000.0,long((end - start) * 1000.0)))
             #logging.debug('2 %s %s %s %s %s' % (end2,start2,end2-start2,(end2 - start2) * 1000.0,long((end2 - start2) * 1000.0)))
-            processing_time_millis =  long((end - start) * 1000.0)  # time() is more accurate than clock() on appspot
+            processing_time_millis =  long((end - start) * 1000.0)  
         
         
             bucket = self.bucket.name1 if self.bucket else (args[0] if len(args) > 0 else None)
@@ -101,7 +100,7 @@ class S3Operation():
             operation = 'REST.%s.%s' % (self.request.method,self.resource_type)
             key = self.key if self.key else (args[1] if len(args) > 1 else None)
             request_uri= '%s %s' % (self.request.method, self.request.path_qs)
-            http_status = self.response._Response__status[0]     # response.status_code, response.status_int don't work!
+            http_status = self.response._Response__status[0]     # response.status_code, response.status_int do not work!
             error_code = self.error_code
             bytes_sent = len(self.response.out.getvalue()) if self.request.method in ['GET','HEAD'] else len(self.request.body) # out = StringIO
             object_size = 0  #TODO the total size of the object in question
@@ -189,7 +188,6 @@ class S3Operation():
         
         interesting_headers = {}
         for header_key in headers:
-            #logging.info('header_key %s' % header_key)
             lk = header_key.lower()
             if lk in ['content-md5','date','content-type'] or lk.startswith(AMAZON_HEADER_PREFIX):
                 if not self.is_development_server() and lk == 'content-type':
@@ -237,29 +235,20 @@ class S3Operation():
         if bucket != '':
             buf += "%s" % bucket 
 
-
-        logging.info('self.request.path_qs %s' % self.request.path_qs)
-        
-        p = self.request.path.replace('%25','%')
-        logging.info('self.request.pathp %s' % p)
-        
-        logging.info('self.request.url %s' % self.request.url)
-        
-        logging.info('self.request.environ:\n%s', pprint.pformat(self.request.environ))
-        
-        logging.info('key %s' % key)
+        # log interesting info
+        logging.debug('self.request.path_qs %s' % self.request.path_qs)        
+        logging.debug('self.request.url %s' % self.request.url)
+        logging.debug('self.request.environ:\n%s', pprint.pformat(self.request.environ))
+        logging.debug('key %s' % key)
         
         # add the key
         if key:
             buf +=  '/' + (key if self.request.environ.get('HTTP_USER_AGENT') == 'gzip(gfe)' else url_encode(key))
         elif self.request.path.endswith('/') and len(self.request.path) > 1:
-        #elif self.request.path != '/':
             buf +=  '/'
+            
         # handle special query string arguments
-    
         if query_args.has_key("acl"):
-           # if not key:
-            #    buf += '/'  # only add a trailing slash for acl???
             buf += "?acl"
         elif query_args.has_key("torrent"):
             buf += "?torrent"
@@ -269,8 +258,6 @@ class S3Operation():
             buf += "?location"
     
 
-    
-    
         return buf
 
     
@@ -289,9 +276,7 @@ class S3Operation():
     
 
     def check_auth(self, bucket='', key=None, query_args = {}):
-        
-        #logging.info('check_auth [%s]' % os.environ.get("HTTP_AUTHORIZATION"))
-        
+                
         # check auth header present
         client_auth = os.environ.get("HTTP_AUTHORIZATION")
         if not client_auth:
@@ -299,30 +284,29 @@ class S3Operation():
             self.requestor = self.all_users
             return True
         
+        # parse the key and secret
         m = re.match('^AWS ([^:]+):([^:]+)$',client_auth)
         if not m:
             self.error_generic(400,'InvalidHeader','Authorization header is not in the correct format')
             return False
         
-        
         client_aws_key = m.group(1)
         client_aws_secrethash = m.group(2)
         
-        
+        # locate requestor principal
         self.requestor = UserPrincipal.gql('WHERE aws_key = :1', client_aws_key).get()
         if not self.requestor:
             self.error_invalid_access_key(client_aws_key)
             return False
             
      
-     
+        # compute canonical string
         method = self.request.method
         headers = self.request.headers
         
         server_canonical_string = self.canonical_string(method=method, headers=headers, bucket=bucket, key=key, query_args = query_args)
         
         server_auth = "AWS %s:%s" % (self.requestor.aws_key, self.encode(self.requestor.aws_secret, server_canonical_string))
-        
         
         logging.debug('server canonical: ' + server_canonical_string)
         logging.debug('server computed: ' + server_auth)
@@ -414,7 +398,6 @@ class S3Operation():
     def error_bucket_not_empty(self, bucket):
         self.error_generic(409,'BucketNotEmpty','The bucket you tried to delete is not empty',{'BucketName':bucket})
  
-    
     def error_no_such_key(self, key):
         self.error_generic(404,'NoSuchKey','The specified key does not exist',{'Key':key})
 

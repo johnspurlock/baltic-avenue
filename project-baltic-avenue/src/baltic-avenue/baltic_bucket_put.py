@@ -15,6 +15,7 @@ class PutBucketOperation(S3Operation):
         if not self.check_auth(bucket,query_args=self.request.params):
             return
 
+        # locate bucket
         self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
 
         # bucket is owned by someone else
@@ -31,11 +32,11 @@ class PutBucketOperation(S3Operation):
                 return
                     
             
-            # check acl
+            # assert WRITE_ACP
             if not self.check_permission(self.bucket.acl,'WRITE_ACP'): return
-                
-            acl = self.read_acl()
             
+            # parse acl and associate with bucket
+            acl = self.read_acl()
             self.bucket.acl = acl
             self.bucket.put()
             
@@ -46,7 +47,7 @@ class PutBucketOperation(S3Operation):
         
 
         
-        # check acl
+        # assert WRITE
         if self.bucket and not self.check_permission(self.bucket.acl,'WRITE'): return
         
         

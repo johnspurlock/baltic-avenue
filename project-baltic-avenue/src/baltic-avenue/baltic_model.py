@@ -1,4 +1,3 @@
-
 from google.appengine.ext import db
 
 class Principal(db.Model):
@@ -14,10 +13,10 @@ class GroupPrincipal(Principal):
     uri = db.LinkProperty(required=True)
 
 class ACL(db.Model):
-    owner = db.ReferenceProperty(Principal,required=True)  #parent
+    owner = db.ReferenceProperty(Principal,required=True)  
 
 class ACLGrant(db.Model):
-    acl = db.ReferenceProperty(ACL,required=True,collection_name='grants')  #parent
+    acl = db.ReferenceProperty(ACL,required=True,collection_name='grants') 
     grantee = db.ReferenceProperty(Principal,required=True)
     permission = db.StringProperty(required=True,choices=['READ','WRITE','READ_ACP','WRITE_ACP','FULL_CONTROL'])
 
@@ -38,7 +37,7 @@ class CommonPrefix(db.Model):
         return (self.name1 or '') + (self.name2 or '') + (self.name3 or '')
     
 class ObjectInfo(db.Expando):
-    bucket = db.ReferenceProperty(Bucket,required=True)  #parent
+    bucket = db.ReferenceProperty(Bucket,required=True) 
     name1 = db.StringProperty(required=True)
     name2 = db.StringProperty()
     name3 = db.StringProperty()    # keys can be at max 1024 bytes utf-8 encoded
@@ -53,7 +52,7 @@ class ObjectInfo(db.Expando):
         return self.name1 +  self.name2 +  self.name3
 
 class ObjectContents(db.Model):
-    object_info = db.ReferenceProperty(ObjectInfo,required=True) #parent
+    object_info = db.ReferenceProperty(ObjectInfo,required=True) 
     contents = db.BlobProperty()  # not required to support zero-byte files
 
 class LogRecord(db.Model):

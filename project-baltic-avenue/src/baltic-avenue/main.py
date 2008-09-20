@@ -1,13 +1,9 @@
-
-
 import wsgiref.handlers
 import logging
 import os
-
 import re
 
 from google.appengine.ext import webapp
-
 
 from baltic_service_get import *
 
@@ -51,7 +47,7 @@ class MainPage(webapp.RequestHandler):
                         
         self.common()
     
-        # ADMIN
+        # ADMIN page (note this will block access to buckets with the same name)
         admin_page = 'admin'
         if self.request.path == '/%s' % admin_page or self.request.path.startswith('/%s/'% admin_page):
             AdminPage(self.request,self.response).go()

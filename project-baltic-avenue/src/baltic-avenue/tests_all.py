@@ -1,18 +1,12 @@
 
 import unittest
+import random
+import time
 
 from baltic_utils import *
 
 
-
-import random
-import time
-
 class AllTests( unittest.TestCase ):
-    """ Class to test validation functions """
-   
-   
-    
    
     def test_parse_url_path(self):
       #""" description goes here """

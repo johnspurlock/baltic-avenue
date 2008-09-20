@@ -9,17 +9,15 @@ from baltic_utils import *
 class GetBucketOperation(S3Operation):
 
 
-
-
     def go(self, bucket):
-        logging.info('GET bucket [%s] (list bucket) query string [%s]' % (bucket, self.request.params))
+        logging.info('GET bucket [%s] (list bucket) request params [%s]' % (bucket, self.request.params))
         
         self.resource_type = 'BUCKET'
         
         if not self.check_auth(bucket=bucket,query_args=self.request.params):
             return
         
-        
+        # locate bucket
         self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
         
         
@@ -51,21 +49,22 @@ class GetBucketOperation(S3Operation):
         if not self.check_permission(bucket_acl,'READ'): return
             
 
-        # location constraint
+        # location constraint (stub for now)
         if self.request.params.has_key('location'):
             self.resource_type = 'LOCATION'
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/"/>')
             return
         
-        # logging info
+        # logging info (stub for now)
         if self.request.params.has_key('logging'):
             self.resource_type = 'LOGGING_STATUS'
             self.response.out.write(u'<?xml version="1.0" encoding="UTF-8"?>\n\n<BucketLoggingStatus xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n<!--<LoggingEnabled><TargetBucket>myLogsBucket</TargetBucket><TargetPrefix>add/this/prefix/to/my/log/files/access_log-</TargetPrefix></LoggingEnabled>-->\n</BucketLoggingStatus>')
             return
         
        
-        # validate and clean args
-        
+       
+       
+
         # validate max-keys
         client_max_keys = self.request.params.get('max-keys')
         if client_max_keys:

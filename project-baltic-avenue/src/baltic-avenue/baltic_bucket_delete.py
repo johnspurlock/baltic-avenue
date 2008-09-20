@@ -6,8 +6,6 @@ from baltic_model import *
 
 class DeleteBucketOperation(S3Operation):
     
-    
-
     def go(self, bucket):
         logging.info('DELETE bucket [%s]' % bucket)
         
@@ -16,6 +14,7 @@ class DeleteBucketOperation(S3Operation):
         if not self.check_auth(bucket):
             return
         
+        # locate bucket
         self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
         
         
@@ -29,7 +28,7 @@ class DeleteBucketOperation(S3Operation):
             self.error_access_denied()
             return
         
-        # check acl
+        # assert WRITE
         if not self.check_permission(self.bucket.acl,'WRITE'): return
         
         
@@ -47,7 +46,6 @@ class DeleteBucketOperation(S3Operation):
         self.bucket.delete()
         
 
-        
-        
+        # expected response for delete
         self.response.set_status(204)
     

@@ -7,7 +7,6 @@ from baltic_utils import *
 class DeleteObjectOperation(S3Operation):
     
     
-
     def go(self, bucket, key):
         logging.info('DELETE bucket [%s] key [%s]' % (bucket,key))
         
@@ -16,7 +15,7 @@ class DeleteObjectOperation(S3Operation):
         if not self.check_auth(bucket,key):
             return
         
-        
+        #locate bucket
         self.bucket = Bucket.gql("WHERE name1 = :1 ",  bucket).get()
         self.key = key
         
@@ -31,7 +30,7 @@ class DeleteObjectOperation(S3Operation):
             self.error_access_denied()
             return
         
-        # check acl
+        # assert WRITE
         if not self.check_permission(self.bucket.acl,'WRITE'): return
         
         # unencode the key
@@ -50,7 +49,7 @@ class DeleteObjectOperation(S3Operation):
             if len(q1.fetch(1)) == 0 and len(q2.fetch(1)) == 0:
                 # the cp has no more related items or child cps, so safely delete it
                 cp.delete()
-                logging.info('deleted [%s]' % cp.full_name())
+                logging.debug('deleted cp [%s]' % cp.full_name())
                 
                 delete_common_prefix_if_empty(cp.common_prefix) # check parent
         

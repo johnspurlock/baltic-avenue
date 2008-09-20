@@ -30,7 +30,7 @@ class AdminPage():
          
          
          
-        # write out header
+        # write out page header
         self.response.set_status(200)
         self.response.headers['Content-Type'] = 'text/html'
         
@@ -69,19 +69,20 @@ class AdminPage():
             self.update_principals()
               
         
-        # write footer
+        # write page footer
         self.response.out.write(u'</body></html>')
         
       
     
    
-   
+    
     def update_principals(self):
         
+        # reloads principals from principals files and re-persists to datastore
         for p in self.find_principals('principals_public') + self.find_principals('principals_private'):
             q = db.GqlQuery("SELECT * FROM %s WHERE id = :1 LIMIT 1" %  p.__class__.__name__,p.id).get()
             if q:
-                logging.info('update %s [%s]' % (p.display_name,p.id))
+                logging.info('updated %s [%s]' % (p.display_name,p.id))
                 
                 q.display_name = p.display_name
                 if q.__class__ == UserPrincipal:
@@ -92,7 +93,7 @@ class AdminPage():
                     q.uri = p.uri
                 q.put()
             else:
-                logging.info('creating %s' % p.id)
+                logging.info('creating %s [%s]' % (p.display_name, p.id))
                 p.put()
         
         
